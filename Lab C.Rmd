@@ -1,0 +1,237 @@
+---
+title: "PSTAT 175, Lab C"
+author: "Marcus Eriksson"
+date: "Section: Wednesday 6pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1) 
+
+####a) Kaplan - Meier estimate plot of the survival function:
+
+```{r}
+library(survival)
+data(kidney)
+
+kidney.time <- kidney[,2]
+
+kidney.cns <- kidney[,3]
+
+kidney.surv <- Surv(kidney.time, kidney.cns)
+
+kidney.km <- survfit(kidney.surv ~ 1)
+
+plot(kidney.km, main = "Kaplan Meier plot for Kidney data",
+xlab = "time until recurrent infection (days)",
+ylab = "Survival Probability", lwd = .5, col = c(1,3,3))
+
+```
+
+
+###b) Use Survdiff to perform log-rank test
+
+```{r}
+survdiff(Surv(kidney.time,kidney.cns)~sex,data=kidney)
+#1 is male, 2 is female
+```
+
+By performing a log rank test on the data we can see that there is significant evidence to suggest that there is a difference between recurrent infection rates of male and female patients so we can reject the null hypothesis that the recurrent infection rates of males and females are equal.
+
+
+###c) Compare survival estimates by sex:
+
+```{r}
+
+
+kidney.sex <- survfit(Surv(kidney.time,kidney.cns)~sex,data=kidney)
+kidney.sex
+
+plot(kidney.sex, col = 4:5, mark = 1:2,
+     main = "Kaplan-Meier plot of kidney survival data by gender",
+     xlab = "time until recurrent infection (days)",
+     ylab = "Survival Probability")
+legend("topright",legend=c("Male","Female"),col=4:5,pch=rep(19,2))
+```
+
+By examining the Kaplan Meier plot we see that there is a clear difference in survival rates between male and female patients. Male patients seem to have recurrent infections at much higher rates than female patients. This supports our conclusion from the log - rank test which was that the reinfection rates were not the same in males and females.
+
+###d) Using the coxph function to compare hazard proportions between sexes:
+
+```{r}
+kidney.coxph <- coxph(Surv(kidney.time,kidney.cns)~sex,data=kidney)
+kidney.coxph
+summary(kidney.coxph)
+```
+
+We obtain a similar p-value from the cox - proportional hazards model when comparing it to the p-value obtained from the log - rank test. This means that we once again draw the conclusion that there is a significant difference in recurrent kidney infection rates when we compare male and female patients. Our 95% confidence interval gives us (.2419, .7738)
+
+
+
+
+###e) Examining the observation in row 42:
+
+```{r}
+kidney.male <- kidney[kidney$sex==1,]
+kidney.male
+```
+
+On row 42 we see that this patient had a reinfection occur after 562 days, more than triple the time it took for reinfection in all other male patients in the dataset.If we were to remove this observation then the male survival probability would reach zero much faster and the difference in reinfection rates between males and females would be even larger.
+
+
+###2) 
+
+####a) Significant difference between the sexes?
+
+```{r}
+data(mgus)
+
+mgus.time <- mgus[,7]
+
+mgus.cns <- mgus[,8]
+
+mgus.sex <- survfit(Surv(mgus.time,mgus.cns)~sex,data=mgus)
+
+mgus.coxph <- coxph(Surv(mgus.time,mgus.cns)~sex, data = mgus)
+mgus.coxph
+```
+
+When running the Cox - PH test to test for a difference between sruvival rates between sexes we obtained a p-value of .0128 meaning that we conclude that there is significant evidence to suggest that the survival rates for men and women are different.
+
+####b) Re-run the test using covariates: 
+
+```{r}
+mgus.coxph_2 <- coxph(Surv(mgus.time,mgus.cns)~sex + age + alb + creat +
+hgb + mspike, data = mgus)
+
+mgus.coxph_2
+```
+
+Our p-value for sex is .21298 meaning that from this Cox - PH model we conclude that there is not a significant difference between sexes. 
+
+####c) Difference in conclusions:
+We might explain the difference in conclusions to part a) and b) by looking at the individual p-values for the other variables in our model. For example we see significant p-values for the variables age and creatinine meaning that it could in reality be a difference in these two variables between sexes causing us to originally conclude that there was a difference between survival rates based on sex.
+
+####d) Proposing a new set of covariates:
+
+
+```{r}
+mgus.coxph_3 <- coxph(Surv(mgus.time,mgus.cns)~sex + age + creat+ hgb, data = mgus)
+mgus.coxph_3
+```
+
+From the cox - PH model earlier I decided that age, hgb and creatinine would be the  best predictors to include in the model. This way all of our covariates have  significant p-values.
+
+
+###3)
+
+####a) Create survival object using pctime; plot KM estimate of survival function
+
+```{r}
+
+#replace missing values in pctime with values from futime
+idx <- is.na(mgus$pctime)
+
+mgus$pctime[idx] <- mgus$futime[idx]
+mgus
+
+mgus.time1 <- mgus[,6]
+
+mgus.cns1 <- mgus[,8]
+
+mgus.surv1 <- Surv(mgus.time1, mgus.cns1)
+
+mgus.km1 <- survfit(mgus.surv1 ~ 1)
+
+plot(mgus.km1, main = "Blood disease Kaplan - Meier Plot", 
+xlab = "Time until diagnosis", ylab = "Survival Probability", 
+col = c("Blue","Red", "Red"), lwd = .5)
+```
+
+
+####b) Using Cox - PH model to see if mspike has an effect on time until disease is present
+
+
+
+```{r}
+mgus.coxph1 <- coxph(Surv(mgus.time1,mgus.cns1)~mspike, data = mgus)
+mgus.coxph1
+```
+
+From our Cox- PH testing for the significance of the variable mspike we obtain a p-value of about .35 so we conclude that mspike does not have a significant effect on time until a further disease is present.
+
+
+
+###c) Testing for the effect of mspike controlling for sex, age, alb, creat, and hgb
+
+```{r}
+mgus.coxph1.2 <- coxph(Surv(mgus.time1,mgus.cns1)~mspike+ sex + age +alb + hgb, data = mgus)
+mgus.coxph1.2
+```
+
+This time we obtain a p-value of .8632 for the variable mspike meaning that it is still insignificant in its effect on the time until a further disease is present. This time our overall p-value is significant though which was not the case when we did not include these covariates.
+
+
+###4) Want to check whether proportional hazards assumption is appropriate for comparing sexes in model 2 from Q2:
+
+####a) Log - log Plots:
+
+```{r}
+mgus.sex
+
+plot(mgus.sex, fun = 'cloglog', 
+main = "log-log plot", xlab = "Survival time", 
+col = c("Yellow", "Purple"))
+legend('topleft', c("male", "female"), fill = c("Yellow", "Purple"))
+```
+
+There is no evidence that the proportional hazards model is inappropriate since the plots of the survival functions for males and females never cross on the log-log plot above.  
+
+
+
+####b) Survival function for an average female subject:
+
+```{r}
+#by_sex <- mgus[,3]
+
+
+
+mgus_sex <- Surv(mgus$futime, mgus$death)
+
+sex_coxph <- coxph(mgus_sex ~ mgus[,3])
+sex_coxph
+
+
+
+plot(survfit(mgus_sex ~ 1, subset = (mgus[,3] == "female")), 
+conf.int=T, main  = "Kaplan - Meier vs. Cox PH fit for Female subjects",
+ylab = "Survival Probability", 
+xlab = "Time until diagnosis", col =c("Green", "Light Blue", "Light Blue"))
+lines(survfit(sex_coxph, data.frame(sex = c("female"))), conf.int = F,
+col = c("Orange", "Red", "Red"))
+legend("topright", c("Cox PH Fit", "Kaplan - Meier Fit"), fill = c("Red", "Green"))
+
+
+
+```
+
+From our Kaplan - Meier vs. Cox proportional hazards plot it does appear that our fit is reasonable.
+
+
+####c) Using the cox.zph to check if proportional hazards model is appropriate:
+
+```{r}
+cox.zph(sex_coxph)
+```
+
+The p-value we obtain for the cox.zph test is .216 which is > .05 so therefore we conclude that there is no reason why we should not use the proportional hazards assumption in modeling the effect of sex.
+
+
+
+
+
+
+

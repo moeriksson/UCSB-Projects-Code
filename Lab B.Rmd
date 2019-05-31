@@ -1,0 +1,231 @@
+---
+title: "PSTAT 175, Lab A"
+author: "Marcus Eriksson"
+date: "Section: Wednesday 6pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1)
+
+```{r}
+library(survival)
+#getwd()
+vets.time <- scan("vets.txt", sep = "") #read in the first column of the dataset
+vets.time
+class(vets.time)
+
+vet.cns <- scan("vets (1).txt", sep="") #second column of the data
+vet.cns
+class(vet.cns)
+```
+
+
+###a) Plot Kaplan- Meier estimate & 95% confidence interval
+```{r}
+vets.surv <- Surv(vets.time, vet.cns) #create the survival object
+vets.surv
+vets.km <- survfit(vets.surv ~ 1) #create kaplan-meier fit for the data
+plot(vets.km, main = "Kaplan-Meier estimate of Vets", xlab = "Time until event",
+     ylab = "Survival Probability", col = "Blue")
+
+vets.km #examine 95% CI
+
+
+```
+
+###b) Estimating the Quartiles of the distribution:
+
+```{r}
+#summary(vets.km) 
+
+quantile(vets.km, probs = .75, conf.int = FALSE)
+quantile(vets.km, probs = .5, conf.int = FALSE)
+quantile(vets.km, probs = .25, conf.int = FALSE)
+```
+75th percentile: t= 162
+50th percentile: t= 80
+25th percentile: t= 25
+
+###2)
+
+```{r}
+data(lung) #select lung dataset
+lung.time <- lung$time #time survival object
+lung.cns <- lung$status #censored survival object
+
+```
+
+###a) Plot Kaplan-Meier estimate of the data:
+
+```{r}
+lung.surv <- Surv(lung.time, lung.cns)
+lung.km <- survfit(lung.surv ~ 1) #create kaplan-meier model
+lung.km 
+plot(lung.km, main = "Kaplan-Meier estimates of lung survival data",
+     xlab = "Survival time (days)", 
+     ylab = "Survival probability", col = "Green", mark.time = TRUE, mark =15)
+```
+
+###b) Estimate and 95% CI for survival function at 150 days:
+
+```{r}
+summary(lung.km, times = 150)
+
+```
+
+Estimate of the survival function at 150 days: p = .793, 95% CI: (.742, .848)
+
+###c) Estimate and 95% CI for the median survival time:
+```{r}
+survfit(lung.surv ~ 1) #find 95% CI for median survival time
+```
+
+Estimate of median survival time: t = 310; 95% CI: (285, 363 )
+
+
+###d) Survival functions by gender
+
+```{r}
+male.lung <- lung[lung$sex == 1,] #male observations in the dataset
+#male.lung
+
+female.lung <- lung[lung$sex == 2,] #female observations in the dataset
+#female.lung
+
+km.gender = survfit(Surv(lung.time,lung.cns)~sex,data=lung)
+km.gender
+plot(km.gender, col = 3:2, mark = 1:2,
+     main = "Kaplan-Meier plot of lung survival data by gender",
+     xlab = "Survival time (days)", ylab = "Survival Probability")
+legend("topright",legend=c("Male","Female"),col=3:2,pch=rep(19,2))
+```
+
+From the plot we see that women had better survival rates than men. This trend was consistent throughout the duration of the study with the exception of a moment in time near the start of the study where male survival rates were greater and at around 780 days where the survival rates were breifly equal.
+
+
+###e) Estimates of median survival time of men and women. 
+
+95% CI for median survival times:
+
+```{r}
+survfit(Surv(lung.time,lung.cns)~sex,data=lung)
+```
+
+
+Estimate and 95% CI for median survival time in men: t = 270; CI: (212, 310)
+
+Estimate and 95% CI for median survival time in women: t = 426; CI: (348, 550)
+
+From these intervals we can clearly see that there is a difference in survival rates between men and women since there is zero overlap between the two intervals. This means there must be some underlying reason that men have a significantly worse survival rate than women.
+
+
+###3)
+
+###a) Read in the data and plot Kaplan-Meier estimate with 95% CI:
+
+```{r}
+heroin <- read.table("Heroin.txt", sep=" ")
+heroin.cns <- heroin[,1] #status object
+heroin.time <- heroin[,2] #time object
+
+#create survival data:
+
+heroin.surv <- Surv(heroin.time, heroin.cns)
+
+heroin.km <- survfit(heroin.surv~1)
+
+plot(heroin.km, conf.int = TRUE, col = "Purple",
+     main = "Kaplan-Meier estimates of methadone treatment", 
+     xlab = "Time in clinics (days)", ylab = "Survival Probability")
+
+
+```
+
+
+###b) Estimate of log(S(t)) along with 95% CI from Greenwood's theorem:
+
+```{r}
+
+#using Greewood's theorem for our estimates:
+mj = heroin.km$n.event #variable for j number of events
+nj = heroin.km$n.risk #variable for n individuals at risk
+
+Vj = mj/nj/(nj-mj)
+cVj = cumsum(Vj)
+#create confidence interval bounds
+lowerCI = log(heroin.km$surv) - 1.96*sqrt(cVj)
+upperCI = log(heroin.km$surv) + 1.96*sqrt(cVj)
+
+plot(heroin.km$time,log(heroin.km$surv),lwd=.5,type="l",
+     main = "Log(S(t)) plot for methadone treatment",
+xlab="Time in clinics (days)",ylab=expression(log(hat(S)(t))))
+lines(heroin.km$time,lowerCI,lty=2,col=2,lwd=.5)
+lines(heroin.km$time,upperCI,lty=2,col=2,lwd=.5)
+```
+
+
+###c) Transforming the plot from b) for an estimate of S(t):
+
+```{r}
+plot(heroin.km$time,heroin.km$surv,lwd=.5,type="l", 
+     main = "Kaplan-Meier estimates for methadone treatment",
+xlab="Time in clinics (days)",ylab=expression((hat(S)(t))), col = "red")
+lines(heroin.km$time,exp(lowerCI),lty= 2,col= "Green",lwd=.5)
+lines(heroin.km$time,exp(upperCI),lty=2,col="Green",lwd=.5)
+```
+
+Comparing this plot to the one we obtained in part a) we observe that they look extremely similar, the new plot we obtained from Greewood's theorem appears more smooth/continuous than the plot in part a). 
+
+
+###d) Hypothesis test for the null that at least 50% of patients should be discharged after 1 year
+
+Null: S(365) >= .50 (we have at least a 50% discharge rate over a year)
+Alternative: S(365) < .50 (we have less than a 50% dischare rate over a year)
+
+```{r}
+#examine summary data and the model
+summary(heroin.km)
+survfit(heroin.surv~1)
+ 
+```
+
+Median survival time: 504, 95% CI for the median survival time: (399, 560)
+Since our confidence interval for the median does not include 365 we reject the null hypothesis and conclude that we have significant evidence to suggest that less than 50% of patients are discharged within 1 year.
+
+Finding a P-value for our test:
+
+
+```{r}
+#obtain the value of the survival function at t= 365
+year_event <- max(heroin.km$time[heroin.km$time < 365]) 
+heroin.km$surv[heroin.km$time == year_event]
+heroin.km$std.err[heroin.km$time == year_event]
+#find the normal test statistic 
+z_test <- (log(heroin.km$surv[heroin.km$time == year_event])
+           - log(.5))/heroin.km$std.err[heroin.km$time == year_event]
+
+z_test #obtain test statistic for the hypothesis test
+
+#obtain a p-value for the TS:
+pnorm(-z_test)
+```
+From our calculations we obtain a P-value of 0.0002124677 which is much smaller than .05 and our test statistic of 3.524 supports this as it is greater than the critical value of 1.96 for this test. Our standard error we obtained was 0.05458958
+
+
+###e) Computing 70th percentile of the distribution of times:
+
+```{r}
+summary(heroin.km)
+```
+
+Estimate of 70th percentile: 749; 95% CI for the 70th percentile: (661,836)
+If we tried to find an interval for the 80th percentile we would run into the problem of not having an upper bound since the upper confidence bound never drops below .20 in this study.The lower bound would be 774 but we would not know the upper bound.  
+
+
+
+
+

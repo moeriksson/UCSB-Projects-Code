@@ -1,0 +1,340 @@
+---
+title: "Pstat 175 Project"
+author: "Marcus Eriksson, Catherine Chang, Crystal Chau"
+date: "Section: W, 6pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache=TRUE )
+```
+
+
+Dataset Description:
+
+The std dataset from the KMsurv package has 877 patients with 24 variables that may contribute to the STD reinfection rate. With the data having 24 variables, our group has chosen to analyze a selection of fewer covariates and how those factors affect the patients. Our goal is to test whether a patient's marital status, age, years of school, type of std, number of partners, condom use, and reinfection status has a significant effect on their reinfection rate based on their race. The data only contains patients who are either White or Black. 
+
+We have kept the variables:  race, marital status, age, years of school, type of std, number of partners, condom use, reinfection status, and reinfection time. We would like to test the interactions between these factors for the 877 patients' reinfection while taking their race into account.
+ 
+
+
+
+
+
+
+ 
+
+```{r}
+library(KMsurv) 
+library(survival)
+getwd()
+```
+
+Model Set-Up:
+We simplified our 24 variable dataset into a 9 variable dataset in order to further analyze the significance of each variable. Predictors related to symptoms of stds were removed as symptoms have no effect on the reinfection status of an individual. 
+
+```{r}
+data("std") #read in the dataset
+head(std)
+
+std$os12m <- NULL
+std$os30d <- NULL
+std$rs12m <- NULL
+std$rs30d <- NULL
+std$abdpain <- NULL
+std$discharge <- NULL
+std$dysuria <- NULL
+std$itch <- NULL
+std$lesion <- NULL
+std$rash <- NULL
+std$lymph <- NULL
+std$vagina <- NULL 
+std$dchexam <- NULL
+std$abnode <- NULL
+
+
+std.time <- std[,10] #create time variable
+std.stat <- std[,9] #create status variable
+
+
+
+std.surv <- Surv(std.time, std.stat) #create survival object
+
+std.km <- survfit(std.surv~1 ) #create kaplan - meier fit
+plot(std.km, main = "STD re-infection Kaplan Meier estimates", xlab = "Time until re-infection (days)", ylab = "Healthy rate ", col = c("Blue", "Pink", "Pink"), mark.time = FALSE)
+
+
+```
+**Question #1: Based on the patient's race what are their re-infection rates?**
+
+For this question we constructed a Kaplan - Meier model fitted by the race of the patients. In the dataset there are 585 black patients (66.7%) and 292 white patients (33.3%). We created subsets for the two races and found confidence intervals for their median survival times. We also built a complimentary log-log plot to help us better understand the differences in the hazard rates of the two races.
+
+```{r}
+std_km_race = survfit(Surv(std.time,std.stat)~std$race) #create  kaplan - meier object seperated by race 
+#summary(std_km_race)
+
+plot(std_km_race, main = "KM Plot comparing re-infection rates by race",xlab="Time to re-infection (days)", ylab="Healthy probability",col=c("red","blue"))
+legend('topright', c("Black", "White") , lty=1, col=c("red", "blue"), bty='n', cex=.75)
+
+
+
+#create subsets for both races:
+std_black <- std[std$race == "B",]
+std_white <- std[std$race == "W",]
+
+
+#kaplan- meier models for black and white individuals
+black_km <- survfit(Surv(std_black$time, std_black$rinfct)~1, data = std_black)
+white_km <- survfit(Surv(std_white$time, std_white$rinfct)~1, data = std_white)
+
+black_km
+white_km
+
+
+#complimentary log-log model comparing the 2 races
+plot(std_km_race, fun = 'cloglog', col = c("Red", "Green"), main = "Complimentary log-log plot",xlab = "Time to re-infection (days)", ylab = "log(-log(S(t)))", lwd = .75)
+legend('topleft', legend = c("Black", "White"), col = c("Red", "Green"), pch = rep(19,2) )
+
+
+```
+
+From the Kaplan-Meier plot, we see that black patients have a lower healthy probability, which means they were more likely to get re-infected compared to white patients. By examining the data, we get a 95% confidence interval of (484,761) for the median re-infection time for black patients while White patients got an interval of (805,NA). The NA for the White population's upper bound means that it exceeds the ending time of the study for the healthy rate to drop below 0.5.  Notice that the upper bound for black patients is lower than the lower bound for white patients, which supports our conclusion from looking at the Kaplan Meier plot, that the Black patients are more likely to get reinfected than the White patients. From the complimentary log-log plot we see that using the cox-ph model might be an issue since the lines cross.
+  
+
+**Question #2: Is there a difference in reinfection rates based on the type of std the patient obtains, separated by the patient's race?** 
+
+To test this research question we used the Cox - proportional hazards model. We first created subsets for the 3 different stds in the study and then graphed them in one plot to get a clear picture of how the hazard proportions vary by std type. 
+
+```{r}
+#create subsets by std type
+std_gon <- std[std$iinfct == 1,]
+std_chl <- std[std$iinfct == 2,]
+std_both <- std[std$iinfct == 3,]
+
+#proportional hazards models for each std by race
+gon_ph <- coxph(Surv(std_gon$time, std_gon$rinfct)~race, data = std_gon)
+#summary(gon_ph)
+
+chl_ph <- coxph(Surv(std_chl$time, std_chl$rinfct)~race, data = std_chl)
+#summary(chl_ph)
+
+both_ph <- coxph(Surv(std_both$time, std_both$rinfct)~race, data = std_both)
+#summary(both_ph)
+
+#plot comparing re-infection rates by std type based on race
+plot(survfit(gon_ph), conf.int = FALSE, col = "Seagreen", main = "Cox PH comparing re-infection rates by STD type", xlab = "re-infection time (days)", ylab = "healthy rate ")
+lines(survfit(chl_ph), conf.int = FALSE, col = "palevioletred1")
+lines(survfit(both_ph), conf.int = FALSE, col = "slateblue1")
+legend('topright', legend = c("Gonorrhea", "Chlamydia", "Both"), col = c("Seagreen", "palevioletred1", "slateblue1"), pch = rep(19,2) )
+
+
+```
+
+By subsetting the different types of std into their own datasets and plotting the cox PH, we can conclude that patients with Gonorrhea are more likely to be re-infected than patients with Chlamydia or both Gonorrhea and Chlamydia. 
+  
+
+**Question #3: Within the variables considered which have the most significant effects on re-infection rates of the patients?**
+
+We used AIC to determine which covariates were the most important to the model.
+
+```{r}
+#install.packages("survminer")
+
+library(survminer)
+library(rms)
+std.cox <- coxph(Surv(std$time,std$rinfct)~race, data = std)
+extractAIC(std.cox)
+
+
+std.cox_1 <- coxph(Surv(std$time,std$rinfct)~race+marital, data = std)
+extractAIC(std.cox_1)
+
+std.cox_2 <- coxph(Surv(std$time,std$rinfct)~race+marital+age, data = std)
+extractAIC(std.cox_2)
+
+std.cox_3 <- coxph(Surv(std$time,std$rinfct)~race+marital+age+yschool, data = std)
+extractAIC(std.cox_3)
+
+std.cox_4 <- coxph(Surv(std$time,std$rinfct)~race+marital+age+yschool+iinfct, data = std)
+extractAIC(std.cox_4) #notice that AIC increases when adding the covariate iinfct
+
+std.cox_5 <- coxph(Surv(std$time,std$rinfct)~race+marital+age+yschool+npartner, data = std)
+extractAIC(std.cox_5)
+
+std.cox_6 <- coxph(Surv(std$time,std$rinfct)~race+marital+age+yschool+npartner+condom, data = std)
+extractAIC(std.cox_6)
+```
+
+Having race as our standard variable, we made multiple models by adding covariates one at a time and comparaing the results of each model's AIC. If the model's AIC is lower than the previous AIC then the covariate that is added is significant to our model. The first model's AIC will be compared to the AIC with only race as the variable. By comparing the AICs of each model we concluded that the iinfct variable, which describes the type of std the patient obtains, is not significant to our final model. Our final model includes the variables, race, martial status, age, years of school, number of partners, and condom usage.  
+  
+Checking the proportional hazards assumptions from the model obtained via AIC:
+
+```{r}
+
+cox.zph(std.cox_6)
+
+
+
+
+```
+
+Since the p-values for each coefficent are greater than .05 we can now assume that the proportional hazards assumptions are valid.
+
+
+**The Weibull model:**
+
+We constructed a Weibull regression model from the results of our AIC above to obtain relevent information on the model's coefficents and hazard rates.
+
+```{r}
+#create a weibull model for the data
+library(SurvRegCensCov)
+
+
+weibull_std <- WeibullReg(Surv(std$time,std$rinfc)~race+marital+age+yschool+npartner+condom, data =std)
+
+weibull_std
+
+
+
+```
+
+The WeibullReg function provides us with the regression formula, the coefficient table, table of hazard rates (HR), and table of the event time ratios(ERT). 
+
+**Hazard Rates:** From the Weibull model we obtain the following hazard rates with 95% confidence intervals:
+
+raceW    0.7271282 0.5663480 0.9335522
+maritalM 1.2077796 0.5290983 2.7570138
+maritalS 1.5805512 0.9030791 2.7662494
+age      1.0020576 0.9761283 1.0286758
+yschool  0.8662796 0.8042696 0.9330707
+npartner 1.0668849 0.9669190 1.1771858
+condom   0.8298732 0.6897159 0.9985119
+
+Interpretations:
+
+A hazard rate of .727 for the raceW variable tells us that for every re-infected black individual there are .727 re-infected white individuals; or in other words white individuals are re-infected at a rate about 27%  lower than the rate for blacks. The confidence interval for this variable is (0.5663480,0.9335522) which does not include one, meaning that there is a significant hazard rate reduction for white individuals. The confidence intervals for marital status are very wide and include one so we cannot be sure that there is a change in hazard rates based on marital status. The hazard rates for age are just about equal to one and the confidence interval surrounds one so we can be pretty certain that age does not effect hazard rates. The yschool variable which measures education levels of patients tells us that there is a significant reduction in hazard rates with increased years of education. The number of partners variable has a hazard rate of 1.0668 and a relatively narrow confidence interval including one meaning it may not have a significant effect on hazard rates. The hazard rate for condom usage tells us that there is a significant reduction in hazard rate with increased condom usage.
+
+
+
+**Extension: Time Varying Coefficents**
+
+```{r, tidy = TRUE, tidy.opts=list(width.cutoff=60)}
+split_stds <- survSplit(Surv(std$time,std$rinfc)~race+marital+age+yschool+
+npartner+condom, data = std, cut = 8, start = "start",
+episode = "Timegroup", end = "stop" )
+
+split_stds1 <- survSplit(Surv(std$time,std$rinfc)~race+marital+age+yschool+
+npartner+condom, data = std, cut = 60, start = "start",
+episode = "Timegroup", end = "stop" )
+
+split_stds2 <- survSplit(Surv(std$time,std$rinfc)~race+marital+age+yschool+
+npartner+condom, data = std, cut = 365, start = "start",
+episode = "Timegroup", end = "stop" )
+
+
+race_split_ph <- coxph(Surv(start, stop, event)~race+marital+age+yschool+
+npartner+condom+race:Timegroup, data= split_stds)
+summary(race_split_ph)
+anova(race_split_ph)
+
+
+
+race_split_ph1 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+race:Timegroup, data= split_stds1)
+summary(race_split_ph1)
+anova(race_split_ph1)
+
+
+race_split_ph2 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+race:Timegroup, data= split_stds2)
+summary(race_split_ph2)
+anova(race_split_ph2)
+
+
+school_split_ph <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+yschool:Timegroup, data= split_stds)
+summary(school_split_ph)
+anova(school_split_ph)
+
+
+
+school_split_ph1 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+yschool:Timegroup, data= split_stds1)
+summary(school_split_ph1)
+anova(school_split_ph1)
+
+
+school_split_ph2 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+yschool:Timegroup, data= split_stds2)
+summary(school_split_ph2)
+anova(school_split_ph2)
+
+
+
+partners_split_ph <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+npartner:Timegroup, data= split_stds)
+summary(partners_split_ph)
+anova(partners_split_ph)
+
+
+
+partners_split_ph1 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+npartner:Timegroup, data= split_stds1)
+summary(partners_split_ph1)
+anova(partners_split_ph1)
+
+
+partners_split_ph2 <- coxph(Surv(start, stop, event)~race+marital+age+yschool+npartner+condom+npartner:Timegroup, data= split_stds2)
+summary(partners_split_ph2)
+anova(partners_split_ph2)
+
+```
+
+We decided to split our data's timeline into three different time groups and test it with three different variables in our dataset. We chose our first timegroup, 8days, because that is where our cloglog plot intersected. Our second timegroups split is at 60 days (2 months), and our third timegroup is at 365 dyas (1 year). First, we tested the variable race in these three different time splits. The summary tells us that the variables 'years of school', and 'condom usage' are significant contributions in the survivial data. But the likelihood ratio test shows the difference in race before 8 days and after 8 days are not statstically significant. The same results shows from testing the race variable in timegroup 2 and 3. 
+Second, we tested the variable 'years in school' in the three different timegroups. The summary from the first timegroup tells us that race and condom usage are significant contributions in the survivial data, but the anova table shows us the difference in years of school before 8 days and after 8 days are not statstically significant. The second and third timegroups shows the same results. 
+Lastly, we tested the variable 'numbers of partners' in the three timegroups. The summary from the first timegroup tells us that race, years of school, and condom usage are significant contributions in the survivial data. The anova table shows us that the difference in number of partner before 8 days and after 8 days is statistically significant. The difference in number of partner before 60 days and after 60 days are not statsitically significant as we can tell from the anova table for timegroup 2. The difference is also not statsistically significant before and after 365 days. 
+After testing three different varaibles at three different timegroups, we can conclude that the original model is the better model because only one variable showed statistical significance in the before and after of the time split. However these varaibles are still significant in our model, shown in the Weibull model we constructed.   
+\newpage
+  
+**References**  
+  
+1. Original by Klein, Moeschberger and modifications by Jun Yan (2012).
+  KMsurv: Data sets from Klein and Moeschberger (1997), Survival
+  Analysis. R package version 0.1-5.
+  https://CRAN.R-project.org/package=KMsurv
+  
+2.Therneau T (2015). _A Package for Survival Analysis in S_. version
+  2.38, <URL: https://CRAN.R-project.org/package=survival>.
+
+3.Alboukadel Kassambara and Marcin Kosinski (2018). survminer: Drawing
+  Survival Curves using 'ggplot2'. R package version 0.4.3.
+  https://CRAN.R-project.org/package=survminer
+
+4.Frank E Harrell Jr (2018). rms: Regression Modeling Strategies. R
+  package version 5.1-2. https://CRAN.R-project.org/package=rms
+
+5.Stanislas Hubeaux and Kaspar Rufibach (2015). SurvRegCensCov: Weibull
+  Regression for a Right-Censored Endpoint with Interval-Censored
+  Covariate. R package version 1.4.
+  https://CRAN.R-project.org/package=SurvRegCensCov
+
+**Dataset**  
+  
+Klein and Moeschberger (1997) Survival Analysis Techniques for Censored and truncated data, Springer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,113 @@
+---
+title: "PSTAT 175, Lab A"
+author: "Marcus Eriksson"
+date: "Section: Wednesday 6pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1)
+```{r}
+getwd()
+```
+
+
+
+
+#### a) Read in the first column of data:
+```{r}
+
+vet.time<- scan("vets.txt", sep="") #read in the data 
+vet.time
+class(vet.time) #check that data is numeric
+
+```
+
+#### b) Read in the second column of data:
+
+```{r}
+vet.cns <- scan("vets (1).txt", sep="") #second column of the data
+vet.cns
+```
+
+
+#### c) Load the survival library:
+
+```{r}
+#install.packages("survival")
+library(survival)
+vet.surv <- Surv(vet.time,vet.cns)
+vet.surv
+```
+
+
+#### d) Mean of vet.time:
+
+```{r}
+mean(vet.time)
+```
+This estimate is a biased estimate of the average time until an event occurs because of the fact that it cannot account for the censored data correctly. For example, we do not know what the value of 25+ is; but we know that it must be something greater than 25.   
+
+#### e)  Calculating sum(vet.cns) and sum(vet.time*vet.cns) :
+
+```{r}
+sum(vet.cns)
+sum(vet.time*vet.cns)
+```
+The sum of vet.cns tells us that out of our 137 observations, 128 of them were not censored. 
+Multiplying one vector by a vector of zeroes and ones eliminates values which get multiplied with zero; meaning that in this case the censored observations are removed when the two vectors are multiplied. 
+
+
+#### f) Mean of using the survival function:
+
+```{r}
+mean(vet.surv)
+```
+This answer is different from the one above because it is performed on a survival object. This function calculates the average survival of the subjects while accounting for the censored subjects. 
+
+
+### 2)
+
+Read in the retirement data:
+```{r}
+retire <- read.table("retire.txt", header=TRUE,skip=2)
+#retire
+```
+
+
+
+#### a) Constructing a survival object from the data:
+
+```{r}
+retire.time <- retire$time #the time object
+retire.cns <- retire$death #the censored object
+
+ret.surv <- Surv(retire.time,retire.cns) #survival object
+ret.surv
+```
+
+#### b) Calculating a Kaplan - Meier estimate:
+
+```{r}
+retire.KM <-survfit(ret.surv ~ 1)  #create an object for the survfit function for our data
+retire.KM
+```
+
+### c) Plotting the survival function:
+
+
+```{r}
+plot(retire.KM, main = "Kaplan-Meier Estimates of Retirement Data", xlab = "Time (in months)", ylab = "Survival Probability", col = "Red")
+```
+
+#### d) Summary of the survival function:
+
+```{r}
+summary(retire.KM) #generate a summary of the retirement survival data
+```
+
+From this sample we are 95% confident that the true proportion of individuals surviving past 50 months is  between 0.802 and 0.875. 
+

@@ -1,0 +1,209 @@
+---
+title: "Pstat 175 Lab D"
+author: "Marcus Eriksson"
+date: "Section: Wednesday 6pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1) Treatment participation for heroin addicts in two clinics:
+
+```{r}
+library(survival)
+hern <- read.table("hern.txt", sep = "")
+#hern
+```
+
+
+
+####a) Test whether prison time has a significant effect on time spent at the clinic:
+
+```{r}
+prison_fit <- coxph(Surv(Time,Status)~Prison,data=hern)
+summary(prison_fit)
+```
+
+From our cox - PH test we conclude that prison time does not have a significant effect on time spent at the clinic.
+
+
+#####b) Controlling for the clinic:
+
+```{r}
+clinic_fit <- coxph(Surv(Time,Status)~hern$Prison+hern$Clinic,data=hern)
+summary(clinic_fit)
+
+```
+
+While our p - value for prison time did decrease substantially, at .093 it is still greater than .05 so therefore we still conclude that prison time does not effect the time a patient spent at the clinic.
+
+####c) Using a log - log plot to determine if the cox - PH assumptions are appropriate:
+
+```{r}
+fit_clinic <- coxph(Surv(Time,Status)~hern$Clinic,data=hern)
+
+
+plot(survfit(fit_clinic,newdata=data.frame(Clinic=factor(c("1","2")))), 
+fun="cloglog",main = "Loglog plot",xlab="Treatment Time",ylab="log(-log(S(t)))",
+lwd=2, col = c("green", "Orange"))
+
+```
+From our plot it appears that the Cox - PH model is appropriate since the two lines never cross.
+
+
+####d) Modeling the effect of prison time when clinics are treated as stratified confounding variables:
+
+```{r}
+
+prison_SC = coxph(Surv(Time,Status)~Prison+strata(hern$Clinic),data=hern)
+summary(prison_SC)
+```
+
+When we examine the effect of prison time while treating the clinics as stratified confounding variables we find that prison time is significant. Our p - value of .045 tells us that prison time does have a significant effect on the time a patient spends at the clinic. This model is different from the model in part b) in that this model checks the effects of prison time seperated by the clinics whereas the model in b) tries to negate the effects of the clinics.
+
+####e) Checking interaction between the prison variable and the clinic variable:
+
+```{r}
+fitPC.int = coxph(Surv(Time,Status)~strata(hern$Clinic)*Prison,data=hern)
+summary(fitPC.int)
+```
+
+From this model we see that the interaction between prison time and the clinic which a patient recieved treatment at is not significant. In this case the interaction term measures the multiplicative effects of whether an individual served prison time and the clinic which they were treated at.
+
+
+###2) Retirement data, modeling the differences between men (1) and women (2):
+
+```{r}
+retire <- read.table("retire.txt", sep = "", header = TRUE)
+#retire
+```
+
+
+
+
+
+
+####a) Using Cox - PH to test for a difference between men and women:
+
+```{r}
+sex_ph <- coxph(Surv(time, death)~gender, data = retire)
+summary(sex_ph)
+
+```
+Likelihood ratio test statistic: 5.78
+P-value: .0127
+From our Cox - Proportional hazards model we conclude that there is a difference between the survival rates of men and women at the facility.
+
+####b) Fitting a model which adjusts for the confounding variable ageentry:
+
+```{r}
+ageentry_fit <- coxph(Surv(time,death)~gender+ageentry,data=retire)
+
+anova(ageentry_fit)
+summary(ageentry_fit)
+
+lrt = 2*(ageentry_fit$loglik[2]-sex_ph$loglik[2])
+pchisq(lrt,df=2,lower.tail = FALSE)
+```
+
+From this test when adjusting for the ageentry variable we still obtain the same result as in part a).
+
+
+####c) Model with age and gender interaction:
+
+```{r}
+retire.int_fit <- coxph(Surv(time,death)~(gender*age),data=retire)
+summary(retire.int_fit)
+
+lrt = 2*(retire.int_fit$loglik[2]-ageentry_fit$loglik[2])
+pchisq(lrt,df=2,lower.tail = FALSE)
+
+```
+
+While the individual coefficents for gender and age are significant; it is not in our best interest to use the interaction term since it has a p-value of .058. 
+
+
+####d) Log-log plot comparing effects of gender on survival time 
+
+```{r}
+
+gender.lg = survfit(Surv(time, death)~gender, data = retire)
+plot(gender.lg, fun = 'cloglog', main = "Loglog Plot",xlab = "Survival Time (months)",
+     ylab = "log(log(S(t))", col = 3:6)
+legend("topleft",legend=c("Male","Female"),col=3:6,pch=rep(19,2))
+
+```
+
+e.
+
+
+####e) Why ageentry over age variable?
+
+We use the covariate ageentry and not age because we want the age at time zero to base our proportional hazards model off of.
+
+###3) Using retire data set; fit a generalized cox model where the effect of gender is different before and after 48 months:
+
+####a) Using survSplit function to create a new data frame with additional rows splitting at 48 months:
+
+```{r}
+retire <- read.table("retire.txt", sep = "", header = TRUE)
+#retire
+new_retire <- (retire$time +0.01)
+
+#new_retire
+
+retire_2 <- survSplit(Surv(new_retire, retire$death)~.
+,cut = 48.01, episode = "timegroup", data = retire)
+#retire_2
+
+
+
+```
+
+
+
+####b) 
+
+```{r}
+retire_split.fit <- coxph(Surv(tstart, new_retire,event)~gender:strata(timegroup), data=retire_2)
+summary(retire_split.fit)
+
+
+```
+
+
+
+####c) 95% confidence intervals for hazard ratio for men before and after the 48 month cut off:
+
+```{r}
+male1 = retire_2[retire_2$gender == 1 & retire_2$timegroup ==1,]
+male2 = retire_2[retire_2$gender == 1 & retire_2$timegroup ==2,]
+
+male_fit1 = coxph(Surv(time, event)~ageentry, data = male1)
+exp(confint(male_fit1, level = .95))
+male_fit2 = coxph(Surv(time, event)~ageentry, data = male2)
+exp(confint(male_fit2, level = .95))
+
+
+
+```
+
+95% CI for the hazard ratio before 4 year cutoff: (0.9975443, 1.010353)
+95% CI for the hazard ratio after 4 year cutoff:  (0.9991686, 1.012062)
+
+####d) Is it important to consider a change in the effect of gender before and after 4 years in the retirement home?
+
+
+Based on the confidence intervals we found for the hazard ratios for men before and after the 4 year cutoff, it is safe to conclude that there is not a significant difference in the effect of gender before and after 4 years since the intervals are nearly identical and are effectively equal to 1.
+
+
+
+
+
+
+
+
+
+
