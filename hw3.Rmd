@@ -1,0 +1,138 @@
+Marcus Eriksson
+
+PSTAT 126
+
+Prof. Petersen
+
+#Homework 3
+
+```{r include=FALSE}
+require(alr4)
+require(faraway)
+require(car)
+require(effects)
+require(carData)
+require(Rcpp)
+
+```
+
+##Problem Set:
+
+###1.
+
+(a) Using lcavol as the predictor and lpsa as the response variable we want to construct an ANOVA table:
+
+```{r}
+library(faraway)
+linear.model<-lm(lpsa ~ lcavol, data = prostate)
+anova(linear.model)
+```
+
+(b) From our ANOVA table above we see that 62% of variability in lpsa is left unexplained by regression.
+
+###2.
+
+(a) We want to fit the regression model with tension as the response and sulfur as the predictor;
+
+We also want plots of Residuals vs. Fitted, Scale Location and a QQ-plot to model our data:
+
+```{r}
+library(alr4)
+attach(baeskel)
+
+baeskel.lm = lm(Tension~Sulfur)
+plot(Tension~Sulfur)
+abline(baeskel.lm, col = 'red')
+
+
+baeskel.res = baeskel.lm$residuals
+baeskel.fv = baeskel.lm$fitted.values
+
+plot(baeskel.lm, which= 1)
+plot(baeskel.lm, which= 2)
+plot(baeskel.lm, which= 3)
+
+```
+
+Comments on violations:
+
+In our plot of fitted values vs residuals we do not have a linear relationship; in our QQ plot it appears that our variance is not constant since the points on the ends are further away from our line. Our scale location plot is definetly not linear and does not have constant variance.
+
+(b) We want to examine two different models where we have transformed the predictor (sulfur)
+
+```{r}
+library(alr4)
+attach(baeskel)
+baeskel.lm = lm(Tension~log(Sulfur))
+plot(Tension~log(Sulfur))
+abline(baeskel.lm, col = 'red')
+
+baeskel.lm = lm(Tension~1/(Sulfur))
+plot(Tension~1/(Sulfur))
+abline(baeskel.lm, col = 'red')
+```
+
+
+
+(c) We will replace sulfur by its logaithm and we will use the box-cox procedure to find the optimal power transformation.
+
+```{r}
+baeskel.lm = lm(Tension~log(Sulfur))
+plot(Tension~log(Sulfur))
+abline(baeskel.lm)
+bc = boxCox(baeskel.lm)
+
+
+```
+
+The value of lambda appears to be between about .2 and 1.2 according to our 95% confidence interval.
+
+###3
+
+(a) We want to examine the scatter plot matrix for fertility, log(ppgdp) and pctUrban:
+
+```{r}
+attach(UN11)
+colnames(UN11)
+pairs(~fertility+log(ppgdp)+pctUrban,data = UN11)
+```
+
+Examining the marginal relationships between our variables we see that there is a correlation between log(ppgdp) and pctUrban; we also see that fertility appears to be highly correlated with log(ppgdp) and pctUrban. We also see that log(ppgdp) and pctUrban are strongly correlated to each other.
+
+(b) 
+
+```{r}
+un11.lm = lm(fertility~log(ppgdp))
+plot(fertility~log(ppgdp))
+abline(un11.lm)
+
+un11.lm = lm(fertility~pctUrban)
+plot(fertility~pctUrban)
+abline(un11.lm)
+```
+
+Note that neither plot has a slope near zero.
+
+(c) We want to obtain the added variable plots for both predictors:
+
+```{r}
+library(alr4)
+attach(UN11)
+full.lm = lm(log(pctUrban)~log(ppgdp) + fertility, data = UN11)
+avPlots(full.lm)
+```
+
+From our added variable plots we see that log(ppgdp) does seem to be useful when adjusting for pctUrban as the relationship becomes more linear.
+
+```{r}
+library(alr4)
+attach(UN11)
+full.lm = lm(log(ppgdp)~log(pctUrban) + fertility, data = UN11)
+avPlots(full.lm)
+```
+
+After adjusting for log(ppgdp) we see that pctUrban is very useful as a predictor.
+
+
+
+ 
