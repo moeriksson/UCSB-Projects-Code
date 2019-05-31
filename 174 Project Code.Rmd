@@ -1,0 +1,196 @@
+---
+title: "Precipitation Project Code"
+author: "Marcus Eriksson"
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Project Source Code:
+
+```{r}
+#read the dataset in rstudio
+require(graphics)
+sbprecip = read.csv("sb-precip-data.csv", header= TRUE, sep=",") 
+sbprecip
+sbprecip.csv = read.table("sb-precip-data.csv",
+sep=",", header=FALSE, skip=1)
+```
+
+
+```{r}
+#basic unmodified time series plot of data
+sbprecip = ts(sbprecip.csv[,2],start = c(1987,1), frequency = 12) 
+ts.plot(sbprecip)
+length(sbprecip)
+```
+
+
+```{r}
+#compare square root and log transformations
+#square root transformation
+sbprecip.sqrt <- sqrt(sbprecip)
+plot(sbprecip.sqrt)
+
+#log transformed data
+sbprecip.log <- log(sbprecip+.001)+2 #modified due to presence of zero obs.
+plot(sbprecip.log)
+
+
+
+```
+
+
+
+```{r}
+#compare untransformed data to  transformed data
+op <- par(mfrow = c(1,2))
+ts.plot(sbprecip,main = "Original data",ylab = expression(X[t])) #untransformed data
+
+ts.plot(sbprecip.sqrt,main = "Square Root tranformed data", ylab = expression(Y[t])) #sqrt transformed data
+
+ts.plot(sbprecip.log,main = "Log tranformed data", ylab = expression(Y[t])) #log transformed data
+
+
+```
+
+
+```{r}
+hist(sbprecip) #histogram for original data
+var(sbprecip) #variance of original data
+
+hist(sbprecip.sqrt) #histogram for square root transformed data
+var(sbprecip.sqrt) #variance of sqrt transformed data
+
+hist(sbprecip.log) #histogram for log transformed data
+var(sbprecip.log)  #variance of log transformed data
+
+```
+
+
+
+```{r}
+#plot the acf and pacf of transformed data
+op = par(mfrow = c(1,2))
+
+#sqrt transformation acf and pacf
+acf(sbprecip.sqrt, lag.max = 372, main = "") #372 is 31 years or lag 31; 
+pacf(sbprecip.sqrt,lag.max = 372,main = "")
+title("Square Root Transformed Time Series", line = -1, outer=TRUE)
+
+#log transformation acf and pacf
+acf(sbprecip.log, lag.max = 372, main = "")
+pacf(sbprecip.log,lag.max = 372,main = "")
+title("Log Transformed Time Series", line = -1, outer=TRUE)
+```
+
+```{r}
+#plot the differenced time series to remove trends
+
+#first difference operation (d1)
+d1 = diff(sbprecip.log, 12) #12 corresponds to lag 1
+plot(d1,main = "De-trended Time Series",ylab = expression(nabla~Y[t]))
+abline(h = 0,lty = 2)
+
+#second difference operation (d2)
+d2 = diff(d1, 24)
+ts.plot(d2,main = "De-trended/seasonalized Time Series",ylab = expression(nabla^{2}~nabla~Y[t]))
+abline(h = 0,lty = 2)
+
+```
+
+```{r}
+#examine the ACF and PACF of the detrended time series (d1)
+op = par(mfrow = c(1,2))
+acf(d1,lag.max = 372,main = "")
+pacf(d1,lag.max = 372,main = "")
+title("De-trended Time Series", line = -1, outer=TRUE)
+```
+
+
+```{r}
+#examine the ACF and PACF of the de-trended and de-seasonalized ts (2nd difference d2)
+op = par(mfrow = c(1,2))
+acf(d2,lag.max = 372,main = "")
+pacf(d2,lag.max = 372,main = "")
+title("De-trended/De-seasonalized Time Series",line = -1, outer=TRUE)
+
+```
+
+
+
+```{r}
+#fit after first difference operation using YW
+(fit1.1 <- ar(d1, method="yule-walker"))
+#fit after second difference operation using YW
+(fit2.1 <- ar(d2, method="yule-walker"))
+
+#fit using MLE after first difference
+(fit1.2 <- ar(d1, method="mle"))
+#fit using MLE after first difference
+(fit2.2 <- ar(d2, method="mle"))
+
+```
+
+
+
+```{r}
+#perform aic and arima analysis
+#install.packages("qpcR")
+library(qpcR)
+#ar12 model analysis
+fit_ar12=arima(sbprecip.log, order = c(12,0,0), method = "ML")
+fit_ar12
+
+
+#ar24 model analysis
+fit_ar24 = arima(sbprecip.log, order = c(24,0,0), method = "ML")
+fit_ar24
+
+```
+
+
+```{r}
+#compare residuals of AR(12) and AR(24) models
+#residual plot of AR(12) model
+plot(residuals(fit_ar12))
+
+#residual plot of AR(24) model
+plot(residuals(fit_ar24))
+```
+
+
+```{r}
+#perform a Box-Ljung test to test independence of residuals
+Box.test(residuals(fit_ar12), type = "Ljung")
+
+#perform a Shapiro-Wilk test to test normality of residuals
+shapiro.test(residuals(fit_ar12))
+```
+
+
+
+
+
+```{r}
+#residual diagnostics
+#histogram of the residuals
+hist(residuals(fit_ar12),main = "Histogram")
+#normal quantile quantile plot of residuals
+qqnorm(residuals(fit_ar12))
+qqline(residuals(fit_ar12),col ="green")
+```
+
+
+```{r}
+#Forecasting: we want to know the precipitation for the next 10 years in SB
+#predict precipitation in SB through 2027 with 95% confidence
+pred = predict(fit_ar12, n.ahead=11)
+ts.plot(sbprecip,xlim=c(1987,2027))
+points(2017:2027,pred$pred)
+lines(2017:2027,pred$pred-1.96*pred$se,lty=2)
+lines(2017:2027,pred$pred+1.96*pred$se,lty=2)
+title(main="Forecast for precipitation in Santa Barbara through 2027")
+```
