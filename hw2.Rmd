@@ -1,0 +1,184 @@
+Marcus Eriksson
+
+PSTAT 126
+
+Prof. Petersen
+
+#Homework 2
+
+```{r include=FALSE}
+require(alr4)
+require(faraway)
+require(car)
+require(effects)
+require(carData)
+require(Rcpp)
+
+```
+
+##Problem Set:
+
+###1.
+
+(a) 
+The predictor in this case is the per person gross national product and the response is     the fertility rate.
+
+
+(b) We want to draw a scatterplot of the fertility rate against the gross national product per person:
+
+```{r}
+fertility = UN11$fertility
+ppgdp= UN11$ppgdp
+plot(fertility~ppgdp,pch=16,col=2,main="Fertility Rate vs PPGDP",xlab="PPGDP",
+     ylab="Fertility Rate")
+```
+
+By examining our plot we can tell that the relationship between ppgdp and fertility rates is not linear.
+
+
+(c) Now we take the natural logarithms of our variables to attempt to model a linear relationship.
+
+```{r}
+fertility = UN11$fertility
+ppgdp= UN11$ppgdp
+plot(log(fertility)~log(ppgdp),pch=16,col=2,main="Log Fertility Rate vs Log PPGDP",xlab="Log PPGDP",
+     ylab="Log Fertility Rate")
+```
+
+
+Compared to the first scatterplot; this linear regression model is definitely much more plausible for use as a good summary of the data. 
+
+
+###2.
+
+a) We want to draw a scatterplot depicting the relationship between log prostate specific antigen and log cancer volume.
+
+```{r}
+require(faraway)
+lpsa = prostate$lpsa
+lcavol= prostate$lcavol
+plot(lpsa~lcavol,pch=16,col=2,main="Log LPSA vs Log LCAVOL",xlab="Log LCAVOL",
+     ylab="Log LPSA")
+```
+
+
+ In this case this simple linear regression model is sufficent.
+
+(b) We want to compute the least squares estimates for our regression model
+
+
+```{r}
+xbar = mean(lpsa)
+ybar = mean(lcavol)
+Sxx=sum((lpsa-xbar)^2)
+Syy=sum((lcavol-ybar)^2)
+Sxy=sum((lpsa-xbar)*(lcavol-ybar))
+r = cor(lpsa, lcavol)
+b1 = r*sqrt(Syy/Sxx)
+b0 = ybar - b1*xbar
+plot(lcavol~lpsa, main='Log LCAVOL vs Log LPSA',pch=16, col=2, xlab = ' Log LPSA', ylab = 'Log LCAVOL')
+abline(b0, b1, col = 'green')
+
+```
+
+We find that:
+
+xbar=2.478
+
+ybar=1.350
+
+Sxx=127.917
+
+Syy=133.359
+
+Sxy=95.928
+
+c)
+
+We want acquire an estimate for our variance and we want to test the hypotheses that Beta_0=0 and that Beta_1=0
+
+```{r}
+n=nrow(prostate)
+x=lcavol
+y=lpsa
+b1_hat=.74991
+b0_hat=-.5085
+fit_y=b0_hat+b1_hat*x
+residual_y=y-fit_y
+var_hat=sqrt(sum(residual_y^2)/(n-2))
+var_hat
+
+linear.model<-lm(lpsa~lcavol,data=(prostate))
+summary(linear.model)
+
+```
+The estimator for our variance is equal to 2.145274.
+We get very small p-values so therefore we can conclude that Beta_0 and Beta_1 are not equal to zero.
+
+###3.
+
+a)
+We will fit the regression of the response (winter temperature) to the predictior (fall temperature) with the linear model function:
+
+```{r}
+fall=ftcollinstemp$fall
+winter=ftcollinstemp$winter
+ftcollins.lm = lm(winter~fall)
+plot(winter~fall,pch=16, col=2, xlab = 'fall temperature (degrees F)', ylab = 'winter temperature (degrees F)')
+abline(ftcollins.lm, col = 'green')
+```
+
+From our plot we observe that there is perhaps a weak predictive relationship between fall temperature and winter temperature.
+
+b) 
+
+We want to conduct a 2 sided hypothesis test with the null hypothesis that the fall temperature has no predictive power on the winter temperature at the alpha=.01 significance level:
+
+```{r}
+summary(lm(winter~fall))
+```
+
+From our test we conclude that there is insufficent evidence to suggest that the fall temperature at Ft Collins is a good predictor of the winter temperature since our p-value of .0428 is larger than our significance level.
+
+c) Our coefficent of determination is .0371; meaning that only 3.71% of the variability in winter temperatures is explained by the fall temperatures. This supports the decision of our hypothesis test.
+
+###4.
+
+a) Regression of daughter height on mother's height
+
+```{r}
+n=nrow(Heights)
+x=Heights$dheight
+y=Heights$mheight
+b1_hat=.54175
+b0_hat=29.91774
+fit_y=b0_hat+b1_hat*x
+residual_y=y-fit_y
+var_hat=sqrt(sum(residual_y^2)/(n-2))
+var_hat
+linear.model<-lm(dheight~mheight,data=(Heights))
+summary(linear.model)
+
+```
+
+The estimate of our variance is 2.879609; our coefficent of determination is .2408; meaning that 24% of the variability in a daughter's height is due to their mother's height.
+
+
+b) We want a 90% CI for beta_1:
+
+```{r}
+confi90<-confint(linear.model,level=.90)
+confi90
+```
+
+We are 90% confident that the true value of beta_1 is between .4990166 and .5844774
+
+c) We want a 99% prediction interval for a daughter whose mother is 61 inches tall:
+
+```{r}
+pointwise.mean<-predict(linear.model,newdata = data.frame(mheight=61),interval = "prediction",level = 0.99,se=T)
+pointwise.mean$fit
+
+```
+
+We find that our 99% prediction interval gives us a lower bound of 57.11531 inches and an upper bound of 68.8127 inches.
