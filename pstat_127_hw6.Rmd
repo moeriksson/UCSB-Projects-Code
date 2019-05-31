@@ -1,0 +1,159 @@
+---
+title: "Pstat 127 Homework 6"
+author: "Marcus Eriksson"
+date: "Section: W 5pm"
+output: pdf_document
+---
+
+###1) Teenage gambling:
+
+Read in the data:
+
+```{r}
+library(faraway)
+data(teengamb)
+#glimpse(teengamb)
+
+```
+
+
+
+####a) Plot of the data:
+
+```{r}
+plot(gamble ~ income, data = teengamb)
+```
+
+#####b) Fitting a curve to the data using kernel smoothing with cross-validated choice of bandwidth:
+
+```{r}
+
+#install.packages("sm")
+#perform cross validation:
+library(sm)
+with(teengamb,sm.regression(income,gamble, h=h.select(income,gamble,method = "cv")))
+attach(teengamb)
+h.select(income,gamble,method = "cv")
+
+plot(gamble ~ income, col=gray(0.75)) 
+lines(ksmooth(income,gamble,"normal",7.102335))
+
+```
+
+The fit does not appear to be linear. 
+
+####c) Fit a curve using smoothing splines with automatically chosen smoothing parameters:
+
+```{r}
+css=with(teengamb, smooth.spline(x = income, y = gamble))
+sum(css$lev) # degrees of freedom
+##alternatively, run css to check the d.f.
+css10 = with(teengamb, smooth.spline(x = income, y = gamble, df = 10))
+data("teengamb")
+plot(x= teengamb$income, y=teengamb$gamble)
+lines(css$x, css$y, col = 'blue')
+lines(css$x, css10$y, col = 'red')
+```
+
+The automatic choice of 2 degrees of freedom did appear to be satisfactory from examining the plot above.
+
+####d) Using loess to fit a curve to the data:
+
+```{r}
+with(teengamb,{
+  plot(gamble ~ income, col="blue",main="span=0.75")
+  f <- loess(gamble ~ income,span=0.75)
+  i <- order(income)
+  lines(f$x[i],f$fitted[i])
+})
+```
+
+###2) Prostate dataset:
+
+Reading in the data:
+
+```{r}
+data("prostate")
+#glimpse(prostate)
+?prostate
+```
+
+####a) Plotting the data:
+
+```{r}
+plot(lweight ~ age, data = prostate)
+```
+
+Examining the plot it seems like there is a weak positive relationship between the log of prostate weight and age. As age increases it appears that log prostate weight increases slightly.
+
+
+####b) Fitting a curve using kernal methods:
+
+```{r}
+par(mfrow=c(1,3))
+for (bw in c(0.1,0.5,2)){
+  with(prostate,{
+    plot(lweight ~ age, col=gray(0.75)) 
+    lines(ksmooth(age,lweight,"normal",bw))})}
+
+
+
+
+
+```
+
+The outlier in this case appears to "pull" the fit up; higher than it should be.
+
+
+####c) Smoothing spline fit with default amount of smoothing:
+
+```{r}
+css=with(prostate, smooth.spline(x = age, y = lweight))
+sum(css$lev) # degrees of freedom
+##alternatively, run css to check the d.f.
+plot(x= prostate$age, y=prostate$lweight)
+lines(css$x, css$y, col = 'blue')
+
+
+```
+
+The curve fit to the data is a straight line.
+
+####d) Fitting loess curve with 95% confidence band:
+
+```{r}
+
+library(ggplot2)
+
+age=prostate$age
+lweight=prostate$lweight
+p <- ggplot(prostate, aes(x = age, y = lweight)) + geom_point()
+p+geom_smooth(method="loess") + ggtitle("Local Linear Fit")
+
+
+```
+From this plot I find it highly unlikely that a linear fit would be possible.
+
+####e) Comparing all 3 fits:
+
+```{r}
+with(prostate,{
+  plot(lweight ~ age, col="red",main="span=0.75")
+  f <- loess(lweight ~ age,span=0.75)
+  i <- order(age)
+  lines(f$x[i],f$fitted[i])
+})
+
+lines(ksmooth(age,lweight,"normal",bw))
+lines(css$x, css$y, col = 'blue')
+
+```
+
+Comparing our 3 different fits we see that our smoothing spline fit is the most linear fit and other kernal method provides the least linear fit. I would say that the kernal method curve probably has lowest bias but highest variance of the 2 fits. My intuition says that the loess curve gives us the best overall fit of the 3 fits regarding bias and variance.
+
+
+
+
+
+
+

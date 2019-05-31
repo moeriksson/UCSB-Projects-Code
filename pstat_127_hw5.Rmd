@@ -1,0 +1,148 @@
+---
+title: "Pstat 127 Homework 5"
+author: "Marcus Eriksson"
+date: "Section: W 5pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1) Examining fat dataset:
+
+####a) Looking at dataset description and determining if regulization may be helpful:
+
+```{r}
+library(faraway)
+?fat
+head(fat)
+```
+
+From examining the dataset I do not believe that regularization would be very useful since we do not have an unmanageable amount of predictors. It also does not look like the dataset has a lot of noise. We do have several predictors which likely provide very similar information which may be an issue. 
+
+####b) Dividing the data into a training and test set:
+
+```{r}
+set.seed(123) # ensures that everyone uses the same data split
+# will give you a testing data set of 25 men, training set of 227
+test.ind <- sample.int(n = nrow(fat), size = floor(0.1*nrow(fat)))
+train.ind <- setdiff(1:nrow(fat), test.ind)
+fatTrain <- fat[train.ind,]
+fatTest <- fat[test.ind,]
+```
+
+
+####c) Using the training data to fit the model:
+
+#####i) Ordinary least squares with all predictors:
+
+```{r}
+
+
+
+fat.lm <- lm(siri~.-brozek-density, data = fatTrain)
+
+summary(fat.lm)
+```
+
+####ii) Ordinary least squares after performing backwards selection:
+
+```{r}
+library(MASS)
+fat.lm2 <- step(fat.lm, direction = "backward", 
+                      trace = FALSE)
+summary(fat.lm2)
+
+```
+
+
+####iii) Ridge regression using lambda = .5
+
+```{r}
+library(glmnet)
+library(faraway)
+#fatTrain
+
+X_train <- as.matrix(fatTrain[4:18]) # remove unwanted variables
+Y_train <- fatTrain$siri
+
+X_test <-as.matrix(fatTest[4:18])
+Y_test <- fatTest$siri
+
+ridge <- glmnet(x=X_train, y=Y_train, alpha = 0, lambda = .5)
+
+ridge
+
+```
+
+
+
+####iv) Lasso regression with lambda = .1
+
+
+```{r}
+lasso_model <- glmnet(x=X_train, y=Y_train, alpha = 1, lambda = .1)
+
+
+lasso_model
+```
+
+
+####d) Use fitted models to predict body fat percentages for test data:
+
+i) OLS with all predictors:
+
+```{r}
+
+
+fat.pred1 <- predict.lm(fat.lm, fatTest)
+
+sum(mean(Y_test - fat.pred1)^2)
+```
+
+ii) OLS after backwards selection:
+
+```{r}
+fat.pred2 <- predict.lm(fat.lm2, fatTest)
+
+sum(mean(Y_test - fat.pred2)^2)
+
+
+```
+
+iii) Ridge regression with $\lambda =.5$:
+
+```{r}
+
+ridge_predict <- ridge$a0 + X_test%*%ridge$beta
+ridge_error <- sum(mean(Y_test - ridge_predict)^2)
+ridge_error
+```
+
+iv) Lasso regression with $\lambda = .1$:
+
+```{r}
+
+lasso_predict <- lasso_model$a0 + X_test%*%lasso_model$beta
+Lasso_error<- sum(mean(Y_test - lasso_predict)^2)
+Lasso_error
+```
+
+Examining the fitted models we see that the ridge regression model gives us the smallest average squared prediction error followed by the lasso regression model.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

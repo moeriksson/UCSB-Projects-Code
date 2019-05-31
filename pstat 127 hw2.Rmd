@@ -1,0 +1,112 @@
+---
+title: "Pstat 127 Homework 2"
+author: "Marcus Eriksson"
+date: "Section: W 5pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+###1) There are 681 cases of potentially cancerous tumors of which 238 are actually malignant. Determining whether a tumor is really malignant is traditionally determined by an invasive surgical procedure. The purpose of this study was to determine whether a new procedure called fine needle aspiration which draws only a small sample of tissue could be effective in determining tumor status.
+
+####a) Binomial regression with class as the response and other variables as predictors:
+
+```{r}
+library(faraway)
+data("wbca")
+#wbca
+
+wbca_glm <- glm(Class~. , family = "binomial", data = wbca)
+summary(wbca_glm)
+```
+
+Residual deviance: 89.464 with 671 degrees of freedom.
+
+####b) What does the model from part a) assume for the dispersion parameter phi?
+
+
+```{r}
+sum(residuals(wbca_glm, type = "deviance")^2)/(691-10)
+```
+
+The model from part a) assumes a dispersion parameter of 1 since it is a binomial model. When estimating the dispersion parameter we get 0.1313718, based on this estimate the assumed value of 1 for phi does seem possible.
+
+
+####c) Using backwards selection to select a subset of predictors:
+
+```{r}
+step(wbca_glm, direction = "backward")
+
+reduced_glm <- glm(Class~ Adhes + BNucl + Chrom + Mitos + NNucl + 
+    Thick + UShap, family = "binomial", data = wbca)
+#reduced_glm
+```
+
+####d) Using the reduced model from part c), estimate log odds and probability that a specific tumor is benign:
+
+
+```{r}
+
+cancer <- c(Adhes = 1, BNucl = 1, Chrom = 3, Epith = 2, Mitos = 1, NNucl = 1, Thick = 4,
+UShap = 1, USize = 1)
+
+
+                 
+cancer_df <- data.frame(matrix(cancer,nrow=1))
+#is.data.frame(cancer_df)
+#cancer_df
+colnames(cancer_df) <- c("Adhes", "BNucl", "Chrom", "Epith", "Mitos", "NNucl", "Thick",
+"UShap", "USize")
+#cancer_df
+
+predict.glm(reduced_glm, newdata = cancer_df  ,type = "link") #log odds
+predict.glm(reduced_glm, newdata = cancer_df  ,type = "response") #probability
+```
+
+Log-odds: 4.834
+Probability: .9921
+
+####e) data from another tumor with same predictor values as in d) but Chrom = 4:
+
+
+```{r}
+cancer <- c(Adhes = 1, BNucl = 1, Chrom = 4, Epith = 2, Mitos = 1, NNucl = 1, Thick = 4,
+UShap = 1, USize = 1)
+cancer_df <- data.frame(matrix(cancer,nrow=1))
+#is.data.frame(cancer_df)
+#cancer_df
+colnames(cancer_df) <- c("Adhes", "BNucl", "Chrom", "Epith", "Mitos", "NNucl", "Thick",
+"UShap", "USize")
+#cancer_df
+
+
+predict.glm(reduced_glm, newdata = cancer_df  ,type = "link") #log odds
+```
+The log-odds of tumor B being benign is lower than the log-odds of tumor A being benign.The log odds are lower by a about .57
+
+
+####f) Tumor is classified as benign if p > .5 and malignant if p < .5; compute # of errors of both types if applied to reduced model:
+
+
+```{r}
+predict_wbca <- predict.glm(reduced_glm, type = "response")
+table(predict_wbca < .5, wbca$Class)
+```
+
+227 predicted to be malignant when in reality there are 238 malignant tumors.
+434 predicted to be benign when in reality there are 443 benign cases. 
+We have 20 total errors for a misclassification rate of .0293.
+
+
+
+
+
+
+
+
+
+

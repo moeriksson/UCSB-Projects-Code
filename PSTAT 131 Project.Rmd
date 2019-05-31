@@ -1,0 +1,497 @@
+---
+title: "PSTAT 131 Final Project"
+author: "Kelsey Meyer, Perm: 5991146 & Marcus Eriksson, Perm:8046906 - Both 131 Students"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+ pdf_document: 
+    toc: yes
+    toc_depth: 3
+---
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache=TRUE )
+```
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#load libraries
+library(knitr)
+library(tidyverse)
+library(tree)
+library(randomForest)
+library(ROCR)
+library(e1071)
+library(imager)
+library(maps)
+library(maptree)
+library(class)
+library(rpart)
+library(dplyr)
+library(glmnet)
+library(gbm)
+```
+
+# Background
+
+## What makes voter behavior prediction (and thus election forecasting) a hard problem?
+
+Voter behavior prediction is extremely difficult as there are many factors which constantly weigh on a potential voter's mind and because it is difficult to create an efficient, accurate sampling model. People are constantly having vast amounts of political information thrown at them via multimedia sources. This means that individuals could be one headline or article away from changing their opinion of a candidate. A candidate deciding to take a tough stance on an issue important to voters is sure to gain new supporters as well as push old supporters away. When it comes to polls it is hard for pollsters to get a sample which truly represents voter demographics accurately. Not only can it be difficult to ask the right people about their voting preferences but it can also be difficult to always get the responses needed for accurate polls. For a variety of reasons people included in a poll may decline to answer or may feel pressured into giving a certain response. The human element as well as the changing political landscape over time make election forecasting challenging. 
+
+## What was unique to Nate Silver's approach in 2012 that allowed him to achieve good predictions?
+
+When Nate Silver made his predictions for the 2012 presidential election he used Bayesian methods to examine the full range of probabilities of a candidate obtaining each percentage of the vote. The technique he used is known as hierarchical modelling which allows for the model to be updated easily with passing time in different states.
+
+## What went wrong in 2016? What do you think should be done to make future predictions better?
+
+It is believed that what went wrong while predicting the outcome of the 2016 presidential election was polling error. According to 538 a polling error of 2-3% is normal due to noise and factors such as non-response bias. It is likely that many polls "missed" in the same direction during the 2016 election since they were probably dealing with the same problems in regards to properly creating their samples. 538 mentions that normally one poll which "misses" in one direction is usually balanced out by another poll which "misses" in the other direction. Certain demographics were under or overestimated in their support for Clinton or Trump. To improve future predictions it is clear that polling error must be minimized; of course this is not an easy task to complete but with improved statistical techniques it can be done.
+
+## Election Data
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+## read data and convert candidate from string to factor
+election.raw <- read_delim("data/election/election.csv", delim = ",") %>%mutate(candidate=as.factor(candidate))
+census_meta <- read_delim("data/census/metadata.csv", delim = ";", col_names = FALSE) 
+census <- read_delim("data/census/census.csv", delim = ",") 
+```
+
+## Dimension of election.raw after removing rows with fips=2000.
+
+After removing the observations where fips=2000 we have 18,345 rows and 5 columns in our data set. We removed these observations because they contained NA values.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 4 - remove observations where fips = 2000
+election.raw <- election.raw[election.raw$fips !=2000,]
+#dim(election.raw)
+```
+
+## Data Wrangling
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 5 - Remove summary rows from election.raw data.
+election_federal=filter(election.raw,fips=="US" & is.na(county))
+election_state=filter(election.raw,is.na(as.numeric(fips))&fips!= "US")
+election=filter(election.raw,is.na(county)==0)
+```
+
+## How many named presidential candidates were there in the 2016 election? 
+
+There were 31 presidential candidates in the 2016 presidential election.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 6 - Bar Plot
+total_votes  = election_federal %>%
+              select(candidate, votes) %>%
+              group_by(candidate)
+
+ggplot(total_votes)+
+  geom_bar(mapping=aes(x=candidate, y=log(votes), fill=candidate),stat="identity")+ coord_flip()
+```
+
+# Visualization
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+# Question 7 - Create variables county_winner and state_winner
+county_winner = election %>%
+  group_by(fips)%>%
+  mutate(total=sum(votes), pct = votes/total)%>%
+  top_n(1)
+state_winner = election_state %>%
+  group_by(fips)%>%
+  mutate(total=sum(votes), pct = votes/total)%>%
+  top_n(1)
+```
+
+## County-level Map
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 8 - map colored by county
+counties <- map_data("county")
+
+ggplot(data = counties) + 
+  geom_polygon(aes(x = long, y = lat, fill = subregion, group = group), color = "white") + 
+  coord_fixed(1.3) +
+  guides(fill=FALSE)  # color legend is unnecessary and takes too long
+```
+
+## Map of Winning Candidate by State
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 9 - map colored by winning candidate in each state
+states <- map_data("state")
+
+states = states%>%
+  mutate(fips = state.abb[match(region, tolower(state.name))])
+
+states = left_join(states, state_winner)
+
+ggplot(data = states) + 
+  geom_polygon(aes(x = long, y = lat, fill = candidate, group = group), color = "white") + 
+  coord_fixed(1.3) +
+  guides(fill=FALSE)  # color legend is unnecessary and takes too long
+```
+
+## Map of Winning Candidate by County
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 10 - left join to create fips and create map of county level winners
+county <- maps::county.fips %>% separate (polyname, c("region", "subregion"), ",")
+county = left_join(counties, county)
+county_winner$fips = as.numeric(county_winner$fips)
+county = left_join(county, county_winner)
+ggplot(data = county) + 
+  geom_polygon(aes(x = long, y = lat, fill = candidate, group = group), color = "white") + 
+  coord_fixed(1.3) +
+  guides(fill=FALSE)  # color legend is unnecessary and takes too long
+```
+
+## Average Poverty Per State (including Puerto Rico)
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE, fig.width =25, fig.height = 15}
+#Question 11 - create a visualization of our choice using census data
+library(dbplyr)
+pov = census %>%
+  filter(complete.cases(census[,-1])) %>%
+  group_by(State) %>%
+  summarise(av_pov = mean(Poverty))
+ggplot(pov, aes(x=State, y=av_pov)) + labs(y = "Average Poverty Level", x = "State")+
+  geom_segment( aes(x=State, xend=State, y=0, yend=av_pov)) +
+  geom_point( size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) + coord_flip()+ theme(axis.text = element_text(size = 23), axis.title = element_text(size=40))
+```
+
+## Create and Print a Few Rows of County-Level Census Data
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 12 - create census.del, census.subct & census.ct
+census <- read_delim("data/census/census.csv", delim = ",") 
+census.del =  census %>%
+  filter(complete.cases(census[,-1])) %>%
+  select(-Women)%>%
+  mutate(Men = (Men/TotalPop)*100, Employed = (Employed/TotalPop)*100, Citizen = (Citizen/TotalPop)*100)%>%
+  mutate(Minority = (Hispanic+Black+Native+Asian+Pacific))%>%
+  select (-c(Hispanic, Black, Native, Asian, Pacific,Walk, PublicWork, Construction))
+
+census.subct=census.del%>%
+  group_by(State,County)%>%
+  add_tally(TotalPop)
+colnames(census.subct)[30]="CountyTotal"
+census.subct= census.subct%>%
+  mutate(Weight = TotalPop/CountyTotal) %>% 
+  ungroup
+
+census.ct <- census.subct %>% 
+  group_by(State, County) %>%
+  summarise_at(vars(TotalPop:Minority), funs(weighted.mean))
+
+head(census.ct)
+```
+
+## PCA for Sub-County and County Level Data
+
+We center and scale before running PCA because the data for some variables is much larger than the data for others and not all of them are on the same scale (some are percentages, others frequencies). The three features with the largest absolute values of the first principal component for county are IncomePerCap, ChildPoverty, and Poverty. The three features with the largest absolute values of the first principal component for sub county are IncomePerCap, Professional, and Poverty. The features that have opposite signs are TotalPop, Drive, Transit, MeanCommute and PrivateWork. This means that these features have negative correlation between the first two principal components while the others have a positive correlation.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 13 - save first two principle components PC1 and PC2 into a two-column data frame
+ct.sub = census.ct[3:28]
+sub.sub = census.subct[4:29]
+ct.pr <- prcomp(ct.sub, scale=TRUE, center=T)
+subct.pr <- prcomp(sub.sub, scale=TRUE, center=T)
+ct.pc <- data.frame(ct.pr$x[,1:2])
+subct.pc <- data.frame(subct.pr$x[,1:2])
+#find the three features with the largest absolute values of the first principal component
+subpc1vec = abs(subct.pr$rotation[,1])
+subpc1vec = sort(subpc1vec, decreasing = TRUE)
+cpc1vec = abs(ct.pr$rotation[,1])
+cpc1vec = sort(cpc1vec, decreasing = TRUE)
+#head(cpc1vec)
+#head(subpc1vec)
+#ct.pr$rotation[,1]
+#subct.pr$rotation[,1]
+```
+
+## Number of PCs Needed to Capture 90% of Variance
+
+To capture 90% of the variance for county, 13 PCs are needed. To capture 90% of the variance for sub-county, 15 PCs are needed.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question #14 - minimum number of PCs needed to capture 90% of the variance for both the county and sub-county, plot proportion of variance explained (PVE) and cumulative PVE for both
+cpr.var=ct.pr$sdev^2
+#calculate pve
+cpve=cpr.var/sum(cpr.var)
+#plot PVE
+plot(cpve, xlab="Principal Component for County", 
+     ylab="Proportion of Variance Explained ", ylim=c(0,1),type='b')
+#plot cumulutive PVE
+plot(cumsum(cpve), xlab="Principal Component for County ", 
+     ylab=" Cumulative Proportion of Variance Explained ", ylim=c(0,1), type='b')
+#look at cumulutive pve by # of components
+#cumsum(cpve[1:15])
+
+subpr.var=subct.pr$sdev^2
+#calculate pve
+subpve=subpr.var/sum(subpr.var)
+#plot PVE
+plot(subpve, xlab="Principal Component for Sub-County", 
+     ylab="Proportion of Variance Explained ", ylim=c(0,1),type='b')
+#plot cumulutive PVE
+plot(cumsum(subpve), xlab="Principal Component for Sub-County ", 
+     ylab=" Cumulative Proportion of Variance Explained ", ylim=c(0,1), type='b')
+#look at cumulutive pve by # of components
+#cumsum(subpve[1:20])
+```
+
+# Clustering
+
+## Hierarchical Clustering with Complete Linkage
+
+Using the first 2 principal components spreads out the results into more clusters whereas when the original census data is used, the majority of results fall in the 1st cluster. When using  the first 2 components, the majority of results are spread between the first 6 clusters. San Mateo county ends up in cluster one when using the census data. When we use the first 2 principal components, San Mateo ends up in cluster 9. This is most likely because we are using far less information to build the tree. The counties that end up in cluster 9 must have similar levels of the first 2 principal components when it comes to county level census data.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 15 - clustering & comparison of results
+dis = dist(scale(ct.sub), method="euclidean")
+set.seed(213)
+ct.hc = hclust(dis, method="complete")
+# Cut the dendrogram in order to have 10 clusters
+ct.clust = cutree(ct.hc, k=10)
+#table(ct.clust)
+dist = dist(scale(ct.pr$x[,1:2]), method = "euclidean")
+pc.hc = hclust(dist, method ="complete")
+pc.clust = cutree(pc.hc, k=10)
+#table(pc.clust)
+#ct.clust[which(census.ct$County == "San Mateo")]
+#pc.clust[which(census.ct$County == "San Mateo")]
+```
+
+# Classification
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+tmpwinner <- county_winner %>% 
+  ungroup %>%
+  mutate(state = state.name[match(state, state.abb)]) %>%               ## state abbreviations
+  mutate_at(vars(state, county), tolower) %>%                           ## to all lowercase
+  mutate(county = gsub(" county| columbia| city| parish", "", county))  ## remove suffixes
+tmpcensus <- census.ct %>% 
+  ungroup%>% 
+  mutate_at(vars(State, County), tolower)
+
+election.cl <- tmpwinner %>%
+  left_join(tmpcensus, by = c("state"="State", "county"="County")) %>% 
+  na.omit
+
+## save meta information
+election.meta <- election.cl %>% select(c(county, fips, state, votes, pct, total))
+
+## save predictors and class labels
+election.cl = election.cl %>% select(-c(county, fips, state, votes, pct, total))
+
+set.seed(10) 
+n <- nrow(election.cl)
+in.trn <- sample.int(n, 0.8*n) 
+trn.cl <- election.cl[ in.trn,]
+tst.cl <- election.cl[-in.trn,]
+
+set.seed(20) 
+nfold <- 10
+folds <- sample(cut(1:nrow(trn.cl), breaks=nfold, labels=FALSE))
+
+calc_error_rate = function(predicted.value, true.value){
+  return(mean(true.value!=predicted.value))
+}
+records = matrix(NA, nrow=3, ncol=2)
+colnames(records) = c("train.error","test.error")
+rownames(records) = c("tree","logistic","lasso")
+```
+
+## Decision Tree
+
+Looking at our pruned tree, it is clear to see that the first split happens at "Transit". We determined that this is because, in general, more densely populated areas tend to vote Democratic (Hillary Clinton), while more rural areas vote Republican (Donald Trump). Transit is an indication of more urban areas as that is where public transit is available. We can see that Transit is again a deciding factor when traveling down the tree so obviously, this factor is highly influential on a person's decision. White then becomes the next deciding factor, as Trump supporters tend to be white while minorities are more likely to vote for Clinton. The final deciding factor is Income, where after considering the other two most influential factors, richer Americans tend to vote for Trump.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 16 - train a decision tree
+trn.cl$candidate <- factor(trn.cl$candidate, levels=c("Donald Trump", "Hillary Clinton"))
+tst.cl$candidate <- factor(tst.cl$candidate, levels=c("Donald Trump", "Hillary Clinton"))
+#build decision tree
+cantree = tree(candidate~., data = trn.cl)
+draw.tree(cantree, cex = 0.5, nodeinfo=TRUE)
+title("UnPruned Tree")
+# K-Fold cross validation
+cv = cv.tree(cantree, folds, FUN=prune.misclass, K=10)
+#find leaf node with the smallest deviation
+best.size.cv <- min(cv$size[cv$dev == min(cv$dev)])
+cantree.pruned = prune.tree(cantree, best=best.size.cv)
+draw.tree(cantree.pruned, cex = 0.6, nodeinfo=TRUE)
+title("Pruned Tree")
+#find predictions of training set
+pred.cantree.train=predict(cantree.pruned, trn.cl, type="class")
+#find predictions of test set
+pred.cantree.test = predict(cantree.pruned, tst.cl ,type = "class")
+#populate records matrix with training and test errors
+records[1,1] = calc_error_rate(pred.cantree.train, trn.cl$candidate)
+records[1,2] = calc_error_rate(pred.cantree.test, tst.cl$candidate)
+records
+```
+
+## Logistic Regression
+
+In the logistic regression model, the very significant variables include Citizen, Professional, Service, Production, Drive, Carpool, Employed, PrivateWork, and Unemployment. Other significant variables include White and WorkAtHome while the slightly significant variables are Income, IncomPerCapErr, MeanCommute, and FamilyWork. This is not consistent with what we saw in our decision tree analysis as the most significant variables there were Transit, White, and Income. Looking at some of the more significant variables and their coefficients, we can see that a one unit increase in the Citizen variable (being a citizen) increases the chances of voting for Donald Trump by about 11% while a one unit increase in the Carpool variable (someone who carpools) decrease the chance of voting for Donald Trump by about 26%.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 17 - Logisitic Regression Model
+#fit the model
+glm.fit.train = glm(candidate~.,data=trn.cl, family=binomial)
+#find the training probabilities
+pred.train = predict(glm.fit.train, type="response")
+#find the testing probabilities
+pred.test = predict(glm.fit.train, tst.cl, type="response") 
+#convert probabilities to labels
+train.lab = as.factor(ifelse(pred.train<=0.5, "Donald Trump", "Hillary Clinton"))
+test.lab = as.factor(ifelse(pred.test<=0.5, "Donald Trump", "Hillary Clinton"))
+#populate records matrix with training and test errors
+records["logistic",] = c(calc_error_rate(train.lab, trn.cl$candidate),
+                         calc_error_rate(test.lab, tst.cl$candidate))
+#print out the updated records matrix
+records
+#summary(glm.fit.train)
+```
+
+## Lasso Penalty
+
+The optimal value of lambda for cross validation is $\lambda = 0.0005$. The non-zero coefficients in the LASSO regression for the optimal value of $\lambda$ are ChildPoverty and Minority. In the unpenalized logistic regression model, ChildPoverty has a coefficient of -1.315e-02, and Minority has a coefficient of -5.341e-02.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 18 - Control for overfitting by applying lasso penalty
+cv.obj = cv.glmnet( trn.cl %>% select(-candidate) %>% as.matrix, 
+                    trn.cl$candidate %>% droplevels,
+                    alpha = 1, 
+                    lambda = c(1, 5, 10, 50) * 1e-4,
+                    family = "binomial")
+bestlam = cv.obj$lambda.min
+#bestlam
+out=glmnet(trn.cl %>% select(-candidate) %>% as.matrix,trn.cl$candidate,alpha=1,lambda=c(1, 5, 10, 50) * 1e-4, family = "binomial")
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:27,]
+#lasso.coef
+lasso.mod <- glmnet(trn.cl%>% select(-candidate) %>% as.matrix, trn.cl$candidate, alpha=1, lambda=c(1, 5, 10, 50) * 1e-4, family = "binomial")
+#find the testing probabilities
+predtest.lasso = predict(lasso.mod, s = bestlam, newx = tst.cl %>% select(-candidate) %>% as.matrix)
+predtrain.lasso = predict(lasso.mod, s = bestlam, newx = election.cl %>% select(-candidate) %>% as.matrix)
+lassotrain.lab = as.factor(ifelse(predtrain.lasso<=0.5, "Donald Trump", "Hillary Clinton"))
+lassotest.lab = as.factor(ifelse(predtest.lasso<=0.5, "Donald Trump", "Hillary Clinton"))
+#populate records matrix with training and test errors
+records["lasso",] = c(calc_error_rate(lassotrain.lab, trn.cl$candidate),
+                         calc_error_rate(lassotest.lab, tst.cl$candidate))
+#print out the updated records matrix
+records
+```
+
+
+## ROC Curves
+
+The model with the highest AUC value is the LASSO penalized logistic model. We would conclude that this model has the best predictive power. However, tree AUC value is very close to the LASSO and provides us with a clear visualization of how decisions are made within the model. Therefore, the decision tree is better for answering questions about how different aspects of a person's life affects their decision in the election.
+
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#Question 19 - Draw AUC curves for all the models
+trn.cl$candidate <- factor(trn.cl$candidate, levels=levels(train.lab))
+#find the training probabilities
+pred.tree.test = predict(cantree.pruned, tst.cl,type = "vector")
+#first argument is the probability training the second is the true labels
+pred.tree = prediction(pred.tree.test[,2], tst.cl$candidate)
+pred.log = prediction(pred.test, tst.cl$candidate)
+pred.lasso = prediction(predtest.lasso, tst.cl$candidate)
+#TPR on the y axis and FPR on the x axis
+perftree = performance(pred.tree, measure="tpr", x.measure="fpr")
+perflog = performance(pred.log, measure="tpr", x.measure="fpr")
+perflasso= performance(pred.lasso, measure = "tpr", x.measure = "fpr")
+#plot ROC curves
+plot(perftree@x.values[[1]], perftree@y.values[[1]], type = "l", col=2, lwd=3, xlab = 
+       "False Positive Rate", ylab =  "True Positive Rate", main="ROC curve")
+lines(perflog@x.values[[1]],perflog@y.values[[1]], type = "l", col = 4, lwd=3)
+lines(perflasso@x.values[[1]],perflasso@y.values[[1]], type = "l", col = 3, lwd=3)
+abline(0,1)
+legend("bottomright",legend = c("tree","logistic","lasso"), col = c(2,4,3), lwd = c(3,3), lty = c(1,1))
+#calculate AUC values
+auc.tree = performance(pred.tree, "auc")@y.values
+auc.log = performance(pred.log, "auc")@y.values
+auc.lasso = performance(pred.lasso, "auc")@y.values
+#auc.tree
+#auc.log
+#auc.lasso
+```
+
+# Taking it Further
+
+Looking at the results of all the different models created above, we found it interesting that there was such a difference between the variables each model chose as the most important/significant factors in determining voting behavior. We would like to fit a few more kinds of models in order to get a more rounded picture about which variables are truly the important ones. We also were curious as to if any of these models outperformed the ones already found, so we took a look at the test error of each model as well. Our results are below.
+
+## SVM
+
+To fit the SVM model, we found that the optimal cost for the best model is that of 0.01. After fitting the SVM model with this parameter, we look at the absolute size of the coefficients to determine which ones have the highest significance. In this case, the model chooses White, Minority, Transit, Professional, Drive, and Employed as the coefficients with the highest influence on voter choice. Below, we will see the test and training error for this model populated in the records matrix.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+election.cl$candidate <- factor(election.cl$candidate, levels = c("Donald Trump", "Hillary Clinton"))
+#SVM
+set.seed(1)
+tune.out=tune(svm,candidate~., data=trn.cl,kernel="linear",
+              ranges=list(cost=c(0.001, 0.01, 0.1,1,10,100)))
+#summary(tune.out)
+svmfit=svm(candidate~., data=election.cl, kernel="linear", cost=.01, scale=TRUE)
+#abs(t(svmfit$coefs) %*% svmfit$SV)
+#predictions of test set using svm fit
+pred.svm= predict(svmfit, tst.cl, type="class") 
+```
+
+## Random Forest
+
+We wanted to further examine the importance of the different variables in our data set; therefore we built a random forest model. From the model we see that the 5 most influential predictors are Transit, Minority, White, Professional and Service. Our decision tree had its initial split on Transit so it makes sense that the most important variable obtained from the random forests model would also be transit. We suspect that the reason why the transit variable is the most influential is because it represents usage of public transportation. If there are many people using public transportation it is certainly an indicator of people living in an urban area and as we know it has been well documented that the rural areas voted in Trump's favor and the urban areas voted in Clinton's favor. White is also one of the first variables included in our decision tree from earlier which appears as the third most important variable variable here. The out of bag estimate of the error rate was 6.47%.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE, fig.height = 10}
+rf.election = randomForest(candidate ~ ., data=trn.cl, importance=TRUE)
+#rf.election
+varImpPlot(rf.election)
+```
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+plot(rf.election, main = "Random Forest for election data")
+#importance(rf.election)
+```
+
+## Boosting
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+boost.election <- gbm(ifelse(candidate == "Donald Trump",1,0)~ ., data=trn.cl, distribution="bernoulli", n.trees=1000, interaction.depth = 4, shrinkage = .01)
+summary(boost.election)
+```
+
+From the boosting model we also found that transit was the most influential predictor, however after that the order of significance of the predictors does vary from the random forests. From boosting the top five most influential predictors were Transit, White, Minority, Professional and Unemployment (in that order); compared to random forests where the top five predictors were Transit, Minority, White, Professional and Service. This helps us understand why election modeling is so difficult in that we will obtain different models with differences in which variables are most important to predicting voter behavior. 
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+#find all test & training errors
+records = matrix(NA, nrow=3, ncol=2)
+colnames(records) = c("train.error","test.error")
+rownames(records) = c("svm","randomforest", "boost")
+pred.svm.train=predict(svmfit, trn.cl, type="class")
+#find predictions of test set
+pred.svm.test = predict(svmfit, tst.cl ,type = "class")
+
+
+records["svm",] = c(calc_error_rate(pred.svm.train, trn.cl$candidate),
+                         calc_error_rate(pred.svm.test, tst.cl$candidate))
+
+pred.rf.train  = predict(rf.election, trn.cl, type = "class")
+pred.rf.test = predict(rf.election, tst.cl, type = "class")
+records["randomforest",] = c(calc_error_rate(pred.rf.train, trn.cl$candidate),
+                         calc_error_rate(pred.rf.test, tst.cl$candidate))
+pred.boost.train  = predict(boost.election, trn.cl, type = "response", n.trees = 1000)
+pred.boost.test = predict(boost.election, tst.cl, type = "response", n.trees = 1000)
+pred.train.lab = as.factor(ifelse(pred.boost.train<=0.5, "Hillary Clinton", "Donald Trump"))
+pred.test.lab = as.factor(ifelse(pred.boost.test<=0.5, "Hillary Clinton", "Donald Trump"))
+records["boost",] = c(calc_error_rate(pred.train.lab, trn.cl$candidate),
+                         calc_error_rate(pred.test.lab, tst.cl$candidate))
+records
+```
+
+In examining the confusion matrix for the different models we see that the random forest method yields the lowest training and test errors. Since we are interested in minimizing test error the random forest model is our preferred model out of all six that we tested. Based on this we would want to consider the important influences from the random forests model in building an election prediction algorithm. That would mean that the 5 most significant predictors for voting behavior would be the use of public transportation, being white, being a minority, having a management or related job and income per capita. Based on our knowledge of the current political climate and how different factors historically influence voters, it makes sense that these predictors are the most important to predicting voting behavior. High levels of public transportation usage should be indicative of  an urban population and as we know voters in highly populated cities tended to vote for Clinton. When it comes to race we know from data that whites were much more likely to vote for Trump when compared to any other race; therefore it is also implied that minorities were much more likely to vote for  Clinton than white voters. The professional variable which reflects higher skill jobs and income per capita variable are both variables which we believe are highly correlated with education level which we know is a strong predictor for political leanings. Those with higher education levels tended to vote for Clinton in the 2016 election. Based on all of this information we think that collecting data on individual's education levels and whether or not they live in urban areas or not would produce a better prediction.  
+
+
+
+

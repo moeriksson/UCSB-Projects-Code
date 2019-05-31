@@ -1,0 +1,128 @@
+---
+title: "Pstat 127 Homework 4"
+author: "Marcus Eriksson"
+date: "Section: W 5pm"
+output: pdf_document
+---
+
+####1) Using Ships dataset:
+
+```{r}
+#install.packages("MASS")
+library(MASS)
+ships
+
+#remove zeroes from dataset
+ship_data <- ships[ships$service !=0,]
+ship_data
+```
+
+####e) Fitting a poisson model with predictors log(service), type, year and period:
+
+```{r}
+ship_glm1 <- glm(formula = incidents ~ log(service) + type + factor(year) + factor(period),
+family=poisson, data= ship_data)
+
+summary(ship_glm1)
+
+#wald test:
+
+abs(0.9027 - 1)/ (0.1018)
+qnorm(.975)
+```
+
+We test the null hypothesis that the coefficent log(service) is equal to zero. From Wald's z-test we obtain a test statistic of 0.9557, which is smaller than the critical value of 1.96 at the alpha = .05 level; therefore we fail to reject the null hypothesis and cannot conclude that log(service) is not equal to zero.  
+
+####f) Fit Poisson rate model with all two way interactions between predictors:
+
+```{r}
+
+
+ship_glm2 <- glm(formula = incidents ~ log(service) + (type + factor(year) + factor(period))^2, 
+offset = log(service),
+family=poisson, data= ship_data)
+
+summary(ship_glm2)
+```
+
+This model does not seem to be a good fit since only one interaction manages to be significant at the .1 significance level.
+
+####g) Checking residuals:
+
+```{r}
+hist(residuals(ship_glm2))
+plot(ship_glm2)
+```
+
+From examining the residual plots, it appears that we do have a few outliers in the dataset. In the residuals vs. fitted values plot we have a few points very far from the line. The residuals vs. leverage plot confirms to us that there are points which should be considered outliers. 
+
+
+####h) Fitting the rate model with just main effects and comparing to interaction model:
+
+```{r}
+ship_glm3 <- glm(formula = incidents ~ log(service) + type + factor(year) + factor(period),
+offset = log(service),
+family=poisson, data= ship_data)
+
+summary(ship_glm3)
+```
+
+When comparing the model containing the interaction terms to the main effects model it is clear that the main effects model is preffered since it contains 4 significant predictors at the .05 significance level whereas the interaction model had zero significant predictors at the .05 level. 
+
+####i) Fitting Quasi-poisson versions of the previous models:
+
+```{r}
+#quasi w/interactions
+ship_glm2q <- glm(formula = incidents ~ log(service) + (type + factor(year) + factor(period))^2, 
+offset = log(service),
+family = quasipoisson(link = "log"), data= ship_data)
+
+summary(ship_glm2q)
+
+#quasi main effects
+
+ship_glm3q <- glm(formula = incidents ~ log(service) + type + factor(year) + factor(period), offset = log(service),
+family = quasipoisson(link = "log"), data= ship_data)
+
+summary(ship_glm3q)
+```
+
+When fitting the quasi-poisson models we still maintain that the main effects model is a better fit than the interaction model. The main effects model has 3 predictors which are significant at the .05 significance level and the interaction model has no significant predictors at any reasonable significance level.
+
+####i) interpreting the coefficients: 
+
+From the model it appears that type C ships may be associated with lower rates of damage incidents. It seems that ships built between 1965 and 1974 are more prone to damage incidents. Ships operating from 1975-1979 also seemed to have a higher association with damage incidents than ships operating from 1960-1974.
+
+
+
+####2) 
+
+```{r}
+#?lm.ridge
+library(MASS)
+names(longley)[1] <- "y"
+lm.ridge(y ~ ., longley)
+plot(lm.ridge(y ~ ., longley,
+              lambda = seq(0,0.1,0.001)))
+select(lm.ridge(y ~ ., longley,
+               lambda = seq(0,0.1,0.0001)))
+
+
+
+```
+
+####a) Model being fitted:
+
+y = GNP + Unemployed + Armed.Forces + Population + Year + Employed
+
+where the coefficients are biased estimates which correspond to maximum aposteriori estimates with normal sampling distributions. 
+
+
+####b) Brief explanation of patterns in the plot:
+
+As the value of lambda increases, we observe that the estimators are penalized more. The black line is the least important to the model as it decreases very quickly, whereas the other lines decrease at a much slower rate or even increase. The plot allows us to gauge the importance of the parameters relative to the MSE.  
+
+
+
+
+
