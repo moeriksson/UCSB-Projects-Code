@@ -1,0 +1,348 @@
+---
+title: "Pstat 115, Homework 4"
+author: "Marcus Eriksson"
+date: "November 9, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=TRUE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '      
+indent2 = paste(rep(indent1, 2), collapse='')
+```
+
+###1) Importance Sampling for Galenshore distribution
+
+####a)
+
+For k = 10
+
+```{r}
+#create galenshore distribution
+library(tidyverse)
+library(ggplot2)
+
+
+galen <- function(x, alpha, theta){
+  
+  (2/ gamma(alpha))*(theta^(2*alpha))*x^(2*alpha-1)*exp((-theta^2)*x^2)
+}
+
+
+set.seed(1)
+#for N = 10
+alpha = 1
+theta = .5
+q = function(x) dexp(1)
+p = function(x) galen(x, alpha, theta)
+N_1a = 10
+Ns_1a = 1:N_1a
+estimate = rep(0, N_1a)
+for(n in Ns_1a) {
+x = rexp(n)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+
+list(Ns_1a = Ns_1a,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_1a, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ 
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 10")
+
+
+```
+
+For k = 100
+
+```{r}
+#for N = 100
+set.seed(1)
+N_100a = 100
+Ns_100a = 1:N_100a
+estimate = rep(0, N_100a)
+for(n in Ns_100a) {
+x = rexp(n)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+
+list(Ns_100a = Ns_100a,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_100a, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 100")
+
+```
+
+For k = 1000
+```{r}
+set.seed(13)
+#for N = 1000
+N_1000a = 1000
+Ns_1000a = 1:N_1000a
+estimate = rep(0, N_1000a)
+for(n in Ns_1000a) {
+x = rexp(n)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+estimate[n]
+
+list(Ns_1000a = Ns_1000a,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_1000a, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 1000")
+
+```
+
+
+####b) Histogram of log weights for k=1000
+
+```{r}
+
+hist(log(w))
+```
+
+
+####c) Sampling from a normal distribution:
+
+For k = 10
+```{r}
+set.seed(1)
+alpha = 1
+theta = .5
+q = function(x) dnorm(x, 1.5 ,1 )
+p = function(x) galen(x, alpha, theta)
+N_b10 = 10
+Ns_b10 = 1:N_b10
+estimate = rep(0, N_b10)
+for(n in Ns_b10) {
+x = rnorm(n, 1.5, 1)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+estimate[n]
+
+list(Ns_b10 = Ns_b10,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_b10, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 10")
+```
+
+
+For k = 100
+
+```{r}
+#n = 100
+set.seed(1)
+alpha = 1
+theta = .5
+q = function(x) dnorm(x, 1.5, 1)
+p = function(x) galen(x, alpha, theta)
+N_b100 = 100
+Ns_b100 = 1:N_b100
+estimate = rep(0, N_b100)
+for(n in Ns_b100) {
+x = rnorm(n, 1.5, 1)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+estimate[n]
+
+list(Ns_b100 = Ns_b100,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_b100, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 100")
+```
+
+For k = 1000
+
+```{r}
+#n = 1000
+
+set.seed(1)
+alpha = 1
+theta = .5
+q = function(x) dnorm(x, 1.5, 1)
+p = function(x) galen(x, alpha, theta)
+N_b1000 = 1000
+Ns_b1000 = 1:N_b1000
+estimate = rep(0, N_b1000)
+for(n in Ns_b1000) {
+x = rnorm(n, 1.5, 1)
+w = p(x) / q(x)
+estimate[n] = sum(x * w) / sum(w)
+}
+estimate[n]
+
+list(Ns_b1000 = Ns_b1000,
+estimate = estimate) %>%
+as.tibble %>%
+ggplot(aes(Ns_b1000, estimate)) +
+geom_point() +
+geom_hline(aes(yintercept = gamma(alpha+.5) / theta * gamma(alpha)), color = "red") +
+ggtitle("Estimates for E[x] varying numbers of samples in black\nTruth in red, for N= 1000")
+
+#print true mean:
+gamma(alpha+.5) / theta * gamma(alpha)
+
+```
+
+Histogram of log importance weights for k = 1000
+
+```{r}
+hist(log(w))
+```
+
+
+
+The true mean of our Galenshore distribution is 1.772454; our k = 1000 estimate we obtained while using the exponential distribution for importance sampling was about 1.12 compared to our estimate from the normal distribution which was much further away from the true mean at about 7.54. It is without question better to use the proposal exp(1) to perform importance sampling for the Galenshore distribtion we were given. The histograms of the weights also show that the exponential distribution produces better samples.
+
+
+###2) Rejection sampling for the semi - circle distribution:
+
+
+####a) Identify a proposal distribution for rejection sampling:
+
+Proposal distribution: Uniform distribution with mean 1
+
+
+####b) Plot the semi - circle distribution for R = 1
+
+```{r}
+#semi circle distribution:
+semi_circle <- function(x, R){
+  (2/(pi*R^2))*sqrt((R^2 - (x^2)))
+  
+}
+
+
+R = 1
+N = 1000
+mode = 0
+maxB = 1
+list(x = runif(N),
+y = runif(N) * maxB) %>%
+as.tibble %>%
+mutate(use = y < semi_circle(x, R)) %>%
+ggplot(aes(x, y)) +
+geom_point(aes(color = use)) +
+stat_function(fun = function(x) semi_circle(x, R)) +
+geom_rect(aes(xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = maxB), alpha = 0.0, color = "red") +
+ggtitle("Proposal distribution outlined in red, target in black")
+```
+
+
+####c) Perform rejection sampling for R =  .1, .2....3.0
+
+```{r}
+R_1 <- seq(from = .1 , by =.1, to = 3)
+
+N = 1000
+mode = 0
+maxB = 1
+list(x = runif(N),
+y = runif(N) * maxB) %>%
+as.tibble %>%
+mutate(use = y < semi_circle(x, R_1)) %>%
+ggplot(aes(x, y)) +
+geom_point(aes(color = use)) +
+stat_function(fun = function(x) semi_circle(x, R_1)) +
+geom_rect(aes(xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = maxB), alpha = 0.0, color = "red") +
+ggtitle("Proposal distribution outlined in red, target in black")
+
+```
+
+
+###3) Rejection sampling and interval estimation:
+
+####a) Use rejection sampling to sample from p(x) = |sin(x)|*I{0, 2pi}
+
+
+```{r}
+
+#install.packages("HDInterval")
+#create indicator function
+library(HDInterval)
+
+ivec <- 0+ ( 0 < x & x < 2*pi)
+
+set.seed(1)
+
+sin_dist <- function(x){
+  abs(sin(x)) * ivec
+}
+
+R = 1
+N_3a = 1000
+
+maxB = 1
+list(x = runif(N_3a),
+y = runif(N_3a) * maxB) %>%
+as.tibble %>%
+mutate(use = y < sin_dist(x)) %>%
+ggplot(aes(x, y)) +
+geom_point(aes(color = use)) +
+stat_function(fun = function(x) sin_dist(x)) +
+geom_rect(aes(xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = maxB), alpha = 0.0, color = "red") +
+ggtitle("Proposal distribution outlined in red, target in black")
+
+
+#compute middle 50%
+quantile(sin_dist(x), .25)
+quantile(sin_dist(x), .75)
+
+#HPDI 
+hdi(sin_dist(x), credMass = .5, allowSplit = TRUE)
+
+
+ 
+
+```
+
+50% Quantile Interval: (.4303093, 0.8340892) 
+Length: 0.4037799
+
+50% Highest Posterior Density Interval: (0.4918161, 0.9060101)
+Length: 0.414194
+
+The HPD interval is slightly larger than the quantile interval;  
+
+
+####b) Plot p(x)
+
+
+```{r}
+curve(sin_dist(x), main = "Red is HPD interval and Blue is Quantile interval ")
+abline(v =.4303093, col = "Blue")
+abline(v =.8340892, col = "Blue")
+
+abline(v =.4918161, col = "Red")
+abline(v =.9060101, col = "Red")
+```
+
+
+
+
+
+
+

@@ -1,0 +1,207 @@
+---
+title: "Pstat 115, Homework 5"
+author: "Marcus Eriksson"
+date: "Section W 4pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=TRUE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '      
+indent2 = paste(rep(indent1, 2), collapse='')
+```
+
+###1)
+
+####a) 
+See attached file
+
+
+####b) 
+
+```{r}
+
+freq = vector()
+for(k in 1:25){
+  count = 0
+  for(i in 1:1000){
+  y=  rnorm(10, 0, 1)
+  y_u = qnorm(.975, ((10 * mean(y)) / (k + 10)), sqrt(1/(k + 10)) )
+  y_l = qnorm(.025, ((10 * mean(y)) / (k + 10)), sqrt(1/(k + 10)) )
+  if( (0 > y_l) & (y_u > 0) ){
+    count = count +1
+  }
+}
+ freq = c(freq, count)
+}
+ratio = freq/1000
+plot(1:25, main = "Coverage",xlab = "k_0", ylab = "Coverage Rate",ratio)
+
+
+
+```
+
+
+####c) Repeat previous part but generate with mu = 1
+
+```{r}
+
+freq = vector()
+for(k in 1:25){
+  count = 0
+  for(i in 1:1000){
+  y=  rnorm(10, 1, 1)
+  y_u = qnorm(.975, ((10 * mean(y)) / (k + 10)), sqrt(1/(k + 10)) )
+  y_l = qnorm(.025, ((10 * mean(y)) / (k + 10)), sqrt(1/(k + 10)) )
+  if( (1 > y_l) & (y_u > 1) ){
+    count = count +1
+  }
+}
+ freq = c(freq, count)
+}
+ratio = freq/1000
+plot(1:25, main = "Coverage",xlab = "k_0", ylab = "Coverage Rate",ratio)
+```
+
+
+
+####d) Differences between the two plots:
+
+The main difference between the two plots is that the plot from the DGP where the mean was equal to zero the coverage improved as k_0 increased; whereas for the DGP where the mean was equal to 1 the coverage decreased as k_0 increased. For both plots the coverage is closet to nominal coverage for low values of k_0. The plot where the mean was equal to zero never seems to undercover; overcoverage increases with k_0. The second plot where the mean was equal to one has problems with severe undercoverage as k_0 increases.
+
+
+
+###2) Modeling Election Outcomes:
+```{r}
+#install.packages("MCMCpack")
+library(MCMCpack)
+```
+
+
+####a) Prior distribution from undecided voters:
+
+Since our prior density followed a multinomial distribution our posterior model will follow a dirlichlet model. We are given the information that 560 people were included in the poll and that we interviewed the voters who were undecided first which in this case we will say is 40 people. (560*.07) 	We will have 4 theta's; 1 to represent the probability of a vote being cast to each candidate. Alpha will be equal to 10 since we will have 40 pseudocounts total and the votes are expected to be evenly distributed between the 4 candidates. Our posterior density will be:
+
+Dirlichlet(10, 10, 10, 10)
+
+
+####b) With Chad Taylor dropping out:
+
+Our new voting probabilities for each candidate come out to:
+
+Pat R: .4253
+Greg O: .4473
+Randall B: .1274
+
+Our new posterior probabilities can be given by a dirlichet distribution. To find this posterior we need to convert our probabilities into counts. When we do so we get:
+
+dirlichet(238, 251, 71)
+
+Where we rounded counts up or down to get whole numbers since we cannot have a fraction of a person vote for a candidate.
+
+Using Monte Carlo to find the posterior probability that more people in
+Kansas support Pat Roberts than Greg Orman:
+
+```{r}
+set.seed(13)
+
+n_sim = 10000 
+mc_elect <- rdirichlet( n_sim , c(238, 251, 71))
+
+# simulated probabilities for each candidate
+p_PR <- mc_elect[,1] 
+p_GO <- mc_elect[,2]
+p_RB <- mc_elect[,3]
+
+#find number of times Pat Roberts has more votes than Greg Orman
+n_wins_PR <- sum((p_PR > p_GO) == TRUE)
+
+#find win probability
+
+prob_PR_GT_GO <- n_wins_PR/n_sim
+
+prob_PR_GT_GO
+```
+
+From running our Monte Carlo simulation we find that the probability of having more people supporting Pat Roberts than Greg Orman is 0.2863.
+
+####c) 
+
+#####i) Probability that Greg Orman gets at least 20000 votes and wins the election.
+
+```{r}
+#curve(dbeta(x,40,60))
+set.seed(13)
+turn_out <- 100000*rbeta(1,40,60)
+
+voters <- round(turn_out)
+
+vote_prob <- rdirichlet(voters, c(282, 295, 46))
+
+#find number of times Greg Orman recieves over 20000 votes
+GO_20k <- sum((vote_prob[,2]*voters) >= 20000)
+GO_20k
+
+#find probability of George Orman recieving over 20000 votes
+p_GO_20k <- GO_20k/voters
+p_GO_20k
+
+#find George Ormans probability of winning and recieving over 20000 votes
+
+n_GO_win <- sum((vote_prob[,2] > vote_prob[,1] & vote_prob[,2] > vote_prob[,3]) == TRUE)
+
+win_prob_GO <- n_GO_win/voters
+win_prob_GO
+
+#win with over 20000 votes 
+
+win_GT_20k <- win_prob_GO*p_GO_20k
+win_GT_20k
+
+
+```
+
+There is a probability of 0.4841752 that Greg Orman recieves over 20000 votes and wins the election. Overall there is about a 70% chance of Greg Orman winning. 
+
+
+####ii) Probability that the difference between Greg Orman and Pat Roberts is smaller than the total vote for Randall Baston.
+
+```{r}
+set.seed(13)
+p_RB <- vote_prob[,3]
+#the difference between GO and PR 
+pd_GO_PR <- abs(vote_prob[,2]-vote_prob[,1])
+
+n_RB_GT <- sum(p_RB > pd_GO_PR)
+p_RB_GT <- n_RB_GT/voters 
+
+p_RB_GT
+
+
+```
+
+The probability that the difference between Greg Orman and Pat Roberts is smaller than the total votes for Randall Baston is 0.9018658. So it seems that the 2 leading candidates are justified in fearing that Baston is taking away potential voters who could sway the election in their favor.
+
+###d) Discussion of assumptions to generate predictions:
+
+The first assumption that we made while making our predictions is that the undecided voters were equally likely to vote for each candidate; this is probably not true as in the real world one would be more likely to be undecided between candidates with similar stances than ones with completely different stances. The assumption that the turnout for the election follows a beta(40, 60) should be a fairly sound one aside from when there is an election of greater or lesser importance. I think that the this beta distribution might have too little variance and perhaps a normal distribution would work better to model the uncertainty in voter turnout. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

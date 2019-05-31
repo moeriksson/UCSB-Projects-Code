@@ -1,0 +1,265 @@
+---
+title: "PSTAT 115, Homework 1"
+author: "Marcus Eriksson, Eddie Bermudez"
+date: "__Due on Sunday, October 14, 2018 at 11:55 pm__"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=FALSE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '
+indent2 = paste(rep(indent1, 2), collapse='')
+indent3 = paste(rep(indent1, 3), collapse='')
+r = function(x, digits=2){ round(x, digits=digits) }
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+__Note:__ If you are working with a partner, please submit only one homework per group with both names and whether you are taking the course for graduate credit or not.  Submit your Rmarkdown (.Rmd) and the compiled pdf on Gauchospace.  Include any addition files (e.g. scanned handwritten solutions) in zip file with the pdf. 
+ 
+  **Text Analysis of JK Rowling's Harry Potter Series**
+
+#1) You are interested in studying the writing style and tone used by JK Rowling (JK for short), the author of the popular Harry Potter series.  You select a random sample of chapters of size $n$ from all of JK's books.  You are interested in the rate at which JK using the word _dark_ in her writing, so you count how many times the word _dark_ appears in each chapter in your sample, $(y_1,...,y_n)$. In this set-up, $y_i$ is the  number of times the word _dark_ appeared in the $i$-th randomly sampled chapter.  Note: this assignment is partially based on text analysis package known as [tidytext](https://www.tidytextmining.com/tidytext.html]).  You can read more about tidytext [here](https://uc-r.github.io/tidy_text).  
+
+    a) Define the population of interest, the population quantity of interest, and the sampling units.
+
+Population of interest: All words in the Harry Potter series
+Population quantity of interest: all instances of the word "dark" in the Harry Potter series.
+Sampling Units: number of times which "dark" appears in the sample
+      
+      
+    b)  What are potentially useful estimands for studying writing style? 
+Estimands which could be useful: words per page/chapter, unique words per page/chapter, proportion of certain words in a chapter
+
+
+    c)  Model: let $Y_i$ denote the quantity that captures the number of times the word _dark_ appears in   the $i$-th chapter.  As a first approximation, it is reasonable to model the number of times _dark_ appears in a given chapter using a  Poisson distribution. _Reminder:_ Poisson distributions are discrete and useful for events that occur independently and at a constant rate.  Let's assume that the quantities $Y_1,...Y_n$ are independent and identically distributed (IID) according to a Poisson distribution with unknown parameter $\lambda$,
+        $$p(Yi=y_i\mid\lambda) = \hbox{Poisson} (y_i \mid\lambda) \quad \hbox{ for } \quad     i=1,...,n.$$
+
+        Write the likelihood $L(\lambda)$ for a generic sample of $n$ chapter, $(y_1,...,y_n)$. Simplify as much as possible (i.e. get rid of any mulitplicative constants)  
+    
+    
+    
+    d) Write the log-likelihood $\ell(\lambda)$ for a generic sample of $n$ articles, $(y_1,...,y_n)$.  Simplify as much as possible.  Use this to compute the maximum likelihood estimator for the rate parameter of the Poisson distribution.    
+
+
+        From now on, we'll focus on JK's writing style in the last Harry Potter book, The Deathly Hallows.  This book has 37 chapers. Below is the code for counting getting number of times _dark_ appears in each chapter of The Deathly Hallows .  We use the `tidytext` R package which includes functions that parse large text files into word counts.  The code below creates a vector of length 37 which has the number of times the word _dark_ was used in that chapter.
+
+```{r parse_text, indent=indent2}
+library(tidyverse)      # data manipulation & plotting
+library(stringr)        # text cleaning and regular expressions
+library(tidytext)       # provides additional text mining functions
+library(harrypotter)    # text for the seven novels of the Harry Potter series
+
+
+text_tb <- tibble(chapter = seq_along(deathly_hallows),
+                  text = deathly_hallows)
+tokens <- text_tb %>% unnest_tokens(word, text)
+word_counts <- tokens %>% group_by(chapter) %>% 
+  count(word, sort = TRUE) %>% ungroup
+word_counts_mat <- word_counts %>% spread(key=word, value=n, fill=0)
+
+dark_counts <- word_counts_mat$dark
+
+
+```
+
+    e) Make a bar plot where the heights are the counts of the word _dark_ and the x-axis is the chapter.  
+
+```{r}
+barplot(dark_counts, xlab = "Chapter", ylab = "Dark Counts", 
+        main = "Counts of dark in Harry Potter by chapter")
+```
+
+
+    f) Plot the log-likelihood of the Poisson rate of _dark_ usage in R using the data in `dark_counts`.  Then use `dark_counts` to compute the maximum likelihood estimate of the rate of the usage of the word _dark_ in The Deathly Hallows.  Mark this maximum on the log-likelihood plot with a vertical line (use `abline` if you make the plot in base R or `geom_vline` if you prefer `ggplot`).  
+    
+```{r}
+#plotting the log likelihood:
+lambda <- seq(0,10, by=.001)
+log.like <- -37*lambda - sum(log(factorial(dark_counts)))+log(lambda)*sum(dark_counts)
+plot(lambda,log.like, main = "Log Likelihood of dark usage")
+abline(v=5.189)
+
+#barplot((1000*37)/dark_counts, dark_counts, main = "Barplot of lambda by chapter")
+
+```
+    
+
+
+    **Problem 2**
+
+#.  For the previous problem, we were implicitly assuming each chapter had the same length.  Remember that for $Y_i \sim \text{Poisson}(\lambda)$, $E[Y_i] = \lambda$ for each chapter, i.e. the average number of occurrences of _dark_ is the same in each chapter.  Obviously this isn't a great assumption, since the lengths of the article vary; longer chapters should naturally have more occurreneces of the word.  We can augment the model by considering properties of the Poisson distribution.  The Poisson is often used to express the probability of a given number of events occurring in a fixed "time" interval.   (often called the "exposure", since, as in this example, we are not always counting events over time but some other length).  Here,  the exposure corresponds to the length of the chapter.  
+
+    We will again let $(y_1,...,y_n)$ represent counts of the word _dark_. In addition, we now count the length of each chapter in your sample, $(\nu_1,...,\nu_n)$.
+Let $Y_i$ denote the random variable for the counts of the word _dark_ in a chapter with $\nu_i$ words.  Let's assume that the quantities $Y_1,...Y_n$ are independent and identically distributed (IID) according to a Poisson distribution with unknown parameter $\lambda \cdot \frac{\nu_i}{1000}$,
+    $$
+     p(Yi=y_i\mid \nu_i, 1000) = \hbox{Poisson} (y_i \mid\lambda \cdot \frac{\nu_i}{1000}) \quad \hbox{ for } \quad i=1,...,n.
+    $$
+
+    In the code below, `chapter_lengths` is a vector storing the length of each chapter in words.  
+
+    ```{r chapter_lengths, dependson="parse_text", out.width="50%", indent=indent2}
+chapter_lengths <- word_counts %>% group_by(chapter) %>% 
+  summarize(chapter_length = sum(n)) %>% 
+  ungroup %>% select(chapter_length) %>% unlist %>% as.numeric
+    ```
+  
+
+    a) What is the interpretation of $\frac{\nu_i}{1000}$ in this model?  What is the interpretation of $\lambda$ in this model?
+
+The $\frac{\nu_i}{1000}$ represents the fraction of the book which each chapter in the sample contains. The $\lambda$ in the model is the rate parameter which in this case refers to the frequency of the word "dark" appearing. 
+
+    b)  Fill in the 2x2 table of known and unknown variables and constants introduced in lecture 2.  Make sure your table includes $Y_1, ..., Y_n$, $y_1, ..., y_n$, $n$, $\lambda$, and $\nu_i$.
+
+    c)  Write down the likelihood in this new model.  Use this to calculate maximum likelihood estimator for $\lambda$.  Your answer should include the $\nu_i$'s.  
+
+
+    d) Plot the log-likelihood from the previous question in R using the data from the on the frequency of _dark_ and the chapter lengths.  Compute the maximum likelihood estimate and interpet its meaning (make sure you include units in your answers!)
+```{r}
+#plotting the log likelihood:
+lambda <- seq(0,7, by=.03)
+log.like1 <- log(exp((-lambda*chapter_lengths)/1000)*(((lambda*chapter_lengths)/1000)^37)/factorial(37))
+plot(lambda,log.like1)
+abline(v=5.189)
+
+```
+    
+    
+    
+
+    e)  Correcting for chapter lengths is clearly an improvement, but we're still assuming that JK uses the word _dark_ at the same rate in all chapters.  Is this a reasonable assumption? Comment on why or why not.  
+  
+  This is not a reasonable assumption to make as different chapters have different tones and content. Also by looking at the counts of dark_counts from our samples we see that there is certainly variation between chapters.
+  
+    f) Assume the word usage rate varies by chapter, that is, 
+      $$
+      p(Yi=y_i\mid \lambda, \nu_i, 1000) = \hbox{Poisson} (y_i \mid\lambda_i \cdot \frac{\nu_i}{1000}) \quad \hbox{ for } \quad i=1,...,n.
+      $$
+  
+
+        Compute a separate maximum likelihood estimate of the rate of _dark_ usage (per 1000 words) in each chapter, $\hat \lambda_i$.  Make a bar plot of $\hat \lambda_i$ by chapter.
+
+```{r}
+lambda <- seq(0,7, by=.03)
+log.like1 <- log(exp((-lambda*chapter_lengths)/1000)*(((lambda*chapter_lengths)/1000)^37)/factorial(37))
+plot(lambda,log.like1)
+abline(v=5.189)
+
+
+
+
+```
+
+
+
+
+    **Problem 3**  
+
+3. Sentiment analysis. In this chapter we'll conduct a rudimentary "sentiment analysis".  More about sentiment analysis can be found [here](https://www.tidytextmining.com/sentiment.html). Each word in a chapter can be categorized as "positive"" or "negative". We'll use a dictionary from Bing ... here is an example:
+
+    ```{r}
+    sentiment_map <- get_sentiments("bing")
+    sentiment_map[sample(nrow(sentiment_map), 10), ]
+    ```
+
+
+    #.   Let $p_i$ denote the fraction of words that are "negative" in the $i$-th chapter.  As before we let $\nu_i$ be the word counts for chapter $i$ and we'll define $Z_i$ as the number of words that have _positive_ conotations. Let $Z_i \sim \text{Binomial}(\nu_i, p_i)$.  This model effectively implies that for each word, JK writes a word with positive sentiment with probability $p_i$ and a word with negative sentiment with probability $ 1 - p_i$.
+
+
+    ```{r sentiment, dependson="parse_text", indent=indent2}
+    ## Sentiment Analysis
+    sentiment_frequencies_mat <- word_counts %>% inner_join(get_sentiments("bing")) %>% 
+    group_by(chapter) %>% summarize(freq_pos = sum(n*(sentiment=="positive"))/sum(n), n=sum(n))
+    #we want to see the proportions of positive and negative words in each chapter
+    
+    positive_frequencies <- sentiment_frequencies_mat$freq_pos
+    positive_frequencies
+    mean(positive_frequencies)
+    
+    negative_frequencies <- 1-(sentiment_frequencies_mat$freq_pos)
+    negative_frequencies
+    mean(negative_frequencies)
+    #we want to see how many words were sampled from each chapter for our CI
+    
+     frequencies <- word_counts %>% inner_join(get_sentiments("bing")) %>% 
+     group_by(chapter) %>% summarize(freq_pos = sum(n*(sentiment=="positive")), n=sum(n))
+     frequencies 
+    ```
+
+    a)  Construct a 95\% confidence interval for the difference in proportion of negative words in Chapter 17 of the Deathly Hallows vs Chapter 8 of the Deathly Hallows.  As a reminder from mathstat class, the confidence interval for the difference in two proportions is $\left( \hat { p } _ { 1 } - \hat { p } _ { 2 } \right) \pm 1.96 \sqrt { \frac { \hat { p } _ { 1 } \left( 1 - \hat { p } _ { 1 } \right) } { n _ { 1 } } + \frac { \hat { p } _ { 2 } \left( 1 - \hat { p } _ { 2 } \right) } { n _ { 2 } } }$. What are the lower and upper limits of this interval for the Harry Potter data? Does the confidence interval contain 0?  What might you conclude about differences in sentiment between these two chapters?
+
+```{r}
+#95% confidence interval for proportion of negative words in chapter 17 vs chapter 8
+
+p_17 <- 0.6997319 #proportion of negative words in CH 17
+p_8 <- 0.4732620  #proportion of negative words in CH 8
+
+n_17 <- 373 #number of negative words in Ch 17 and ch 8
+n_8 <- 374
+
+#construct the CI
+
+CI_upper <- (p_17 - p_8)+ 1.96*sqrt((p_17*(1-p_17)/n_17)+(p_8*(1-p_8)/n_8))
+CI_upper
+
+
+CI_lower <- (p_17 - p_8)- 1.96*sqrt((p_17*(1-p_17)/n_17)+(p_8*(1-p_8)/n_8))
+CI_lower
+```
+
+The interval we obtained was (.1577349, 0.2952049); since this interval does not contain zero we can conclude that chapter 17 almost certainly contains more negative words than chapter 8. We are 95% confident that the true difference in the proportion of negative words in chapter 17 and chapter 8 is between .157 and .295; therefore it is safe to conclude that chapter 17 has a significantly more negative sentiment. 
+    
+
+
+    b)  Interpret the meaning of this confidence interval.  Specifically, 95\% is the probability that _____ (fill this in).
+    
+    95\% is the probability that the true difference in the proportion of negative words in chapter 17 and chapter 8 is between .1577349 and 0.2952049.
+    
+    
+    
+
+    c)  Chapter 8 of The Deathly Hallows is titled "The Wedding" whereas Chapter 17 involves Harry Potter reliving the night of his parents murder (if interested, read more about of the plot description [here](http://www.wikisummaries.org/wiki/Harry_Potter_and_the_Deathly_Hallows)). Based on this information, does the confidence interval above make sense?
+    
+    Given the names and brief descriptions of the two chapters examined, it definitely makes sense that our confidence interval does not include zero as weddings are typically a happy subject and murder is obviously something which is typically extremely negative. 
+    
+    **Problem 4**
+
+#.  Let's go back to our original model for usage rates of the word _dark_.  You collect a random sample of book chapters penned by JK and count how many times she uses the word _dark_ in each of the chapter in your sample, $(y_1,...,y_n)$.  In this set-up, $y_i$ is the  number of times the word _dark_ appeared in the $i$-th chapter, as before.  However, we will no longer assume that the rate of use of the word _dark_ is the same in every chapter.  Rather, we'll assume JK uses the word _dark_ at different rates $\lambda_i$ in each chapter.   Naturally, this makes sense, since different chapters have different themes and tone.  To do this, we'll further assume that the rate of word usage $\lambda_i$ itself, is distributed according to a Gamma($\alpha$, $\beta$) with known parameters $\alpha$ and $\beta$,
+  $$
+   f(\Lambda=\lambda_i\mid \alpha,\beta) = \hbox{Gamma} (\lambda_i \mid\alpha,\beta).
+  $$
+and that $Y_i \sim \text{Pois}(\lambda_i)$ as in problem 1.  For now we will ignore any exposure parameters, $\nu_i$.  Note: this is a "warm up" to Bayesian inference, where it is standard to treat parameters as random variables and specify distributions for those parameters.  
+
+    a)  Write out the the data generating process for the above model.  In R simulate 1000 values from the data generating process, assume $\alpha=10$ and $\beta=1$.  Compute the empirical mean and variance of values you generated.  How does the mean compare to the variance? How does this compare to the theoretical mean and variance of a standard Poisson distribution?
+
+
+```{r}
+#run a simulation of a gamma distribution 1000 times
+sim <- rgamma(1000, 10, 1)
+set.seed(2)
+sim
+mean(sim)
+var(sim)
+```
+
+From our simulation of a Gamma distributed random variable our variance was 10.62 and our mean was 10.12. These values are so close to each other which makes sense since the theoretical mean and variance are expected to be equal when B = 1. This is just like a Poisson distribution in that the expected mean and variance are equal.
+
+
+    b) Fill in the 2x2 table of known and unknown variables and constants introduced in lecture 2.  Make sure your table includes $Y_1, ..., Y_n$, $y_1, ..., y_n$, $n$, $\lambda$, $\alpha$, and $\beta$.  
+    
+    c)  Compute $p(Y_i \mid \alpha, \beta) = \int p(Y_i \lambda_i \mid \alpha, \beta) d\lambda_i$.  _Hint:_ The gamma function is defined as $\Gamma ( z ) = \int _ { 0 } ^ { \infty } x ^ { z - 1 } e ^ { - x } d x$. 
+        
+
+
+    d) You just showed that a Gamma mixture of Poisson distributions is a ____.  
+    negative binomial distribution
+    
+    
+    
+    

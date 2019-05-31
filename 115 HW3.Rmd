@@ -1,0 +1,223 @@
+---
+title: "Homework 3 PSTAT 115, Fall 2018"
+author: "Eddie Bermudez & Marcus Eriksson"
+date: "__Due on October 28, 2018 at 11:59 pm__"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=FALSE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '
+indent2 = paste(rep(indent1, 2), collapse='')
+indent3 = paste(rep(indent1, 3), collapse='')
+r = function(x, digits=2){ round(x, digits=digits) }
+library(tidyverse)
+library(reshape2)
+```
+
+## 1(a)
+
+```{r}
+y.A <- c(12,9,12,14,13,13,15,8,15,6)
+y.B <- c(11,11,10,9,9,8,7,10,6,8,8,9,7)
+
+#sum.A <- sum(y.A)
+sum.A <- 117
+sum.B <- 113
+#sum.B <- sum(y.B)
+
+alpha.A <- 120
+beta.A <- 10
+n.A <- 10
+#n.A <- length(y.A)
+
+n.0 <- 1:50
+
+#alpha.B=12
+#beta.B=1
+alpha.B=12*n.0
+beta.B=n.0
+n.B <- 13
+#n.B <- length(y.B)
+
+set.seed(99)
+mc.theta.A <- rgamma(10000, alpha.A+sum.A, beta.A+n.A)
+mc.theta.B <- rgamma(10000, alpha.B+sum.B, beta.B+n.B)
+mc.y.A <- rpois(10000, mc.theta.A)
+mc.y.B <- rpois(10000, mc.theta.B)
+
+#Probability
+mean(mc.theta.B<mc.theta.A)
+mean(mc.y.B<mc.y.A)
+
+#Posterior Distribution
+theta <- seq(0,20,length=10000)
+plot(theta, dgamma(theta,alpha.A+sum.A,beta.A+n.A), 
+     type = "l", col = "red",
+     main = "Posterior distribution",
+     xlab = expression(theta),
+     ylab = expression(p(theta(y[1],...,y[n])))
+     )
+lines(theta, dgamma(theta,alpha.B+sum.B,beta.B+n.B), col = "blue")
+legend("topright", legend = c("red=group A", "blue=group B"), bty="n")
+
+
+#Line Plot
+set.seed(99)
+for(i in 1:50){
+  alpha.B <- 12*i
+  beta.B <- i
+  theta.A <- rgamma(10000, alpha.A+sum.A, beta.A+n.A)
+  theta.B <- rgamma(10000, alpha.B+sum.B, beta.B+n.B)
+  #n.0[i] <- mean(theta.B<theta.A)
+  
+  mc.y.A <- rpois(10000, theta.A)
+  mc.y.B <- rpois(10000, theta.B)
+  n.0[i] <- mean(mc.y.B<mc.y.A)
+}
+plot(n.0, type = "l",
+     main = "1(a) line plot",
+     xlab = "n_0",
+     ylab = "Pr(theta_B < theta_A | y_A, y_B)")
+```
+ 
+ Pr(theta_B < theta_A | y_A, y_B) for a range of values of n_0 is about 0.5538. The posterior distribution appears to be sensitive and depends on the prior distribution.
+ 
+ 
+
+## 1(b)
+    
+```{r}
+set.seed(7)
+mc.tY.A <- rgamma(10000, alpha.A+sum.A, beta.A+n.A)
+mc.tY.B <- rgamma(10000, alpha.B+sum.B, beta.B+n.B)
+mc.y2.A <- rpois(10000, mc.tY.A)
+mc.y2.B <- rpois(10000, mc.tY.B)
+
+mean(mc.tY.B<mc.tY.A)
+mean(mc.y2.B<mc.y2.A)
+
+set.seed(7)
+for(i in 1:50){
+  alpha.B <- 12*i
+  beta.B <- i
+  tY.A <- rgamma(10000, alpha.A+sum.A, beta.A+n.A)
+  tY.B <- rgamma(10000, alpha.B+sum.B, beta.B+n.B)
+  #n.0[i] <- mean(tY.B<tY.A)
+  
+  mc.y2.A <- rpois(10000, tY.A)
+  mc.y2.B <- rpois(10000, tY.B)
+  n.0[i] <- mean(mc.y2.B<mc.y2.A)
+}
+plot(n.0, type = "l",
+     main = "1(b) line plot",
+     xlab = "n_0",
+     ylab = "Pr(tildaY_B < tildaY_A | y_A, y_B)")
+```
+ Pr(~YB < ~YA | y_A, y_B) for a range of values of n_0 is about 0.5013. The posterior distribution appears to be sensitive and depends on the prior distribution.
+ 
+## 1(c)
+
+The posterior distribution of events {thetaB < thetaA} don't seem to be affected after replacement with event {~YB < ~YA}.
+
+## 2(a)
+
+```{r}
+y.A <- c(12,9,12,14,13,13,15,8,15,6)
+sum.A <- 117
+#sum.A <- sum(y.A)
+
+alpha.A <- 120
+beta.A <- 10
+n.A <- 10
+#n.A <- length(y.A)
+
+#for dataset y_A
+mean.yA <- mean(y.A)
+mean.yA
+v.yA <- var(y.A)*(length(y.A)-1)/length(y.A)
+v.yA
+mean.yA/v.yA
+
+#for theta_A
+E.A <- (alpha.A+sum.A)/(beta.A+n.A)
+V.A <- (alpha.A+sum.A)/(beta.A+n.A)^2
+E.A/V.A
+
+y.B <- c(11,11,10,9,9,8,7,10,6,8,8,9,7)
+sum.B <- 113
+#sum.B <- sum(y.B)
+
+alpha.B=12
+beta.B=1
+n.B <- 13
+#n.B <- length(y.B)
+
+#for dataset y_B
+mean.yB <- mean(y.B)
+mean.yB
+v.yB <- var(y.B)*(length(y.B)-1)/length(y.B)
+v.yB
+mean.yB/v.yB
+
+#for thetha_B
+E.B <- (alpha.B+sum.B)/(beta.B+n.B)
+V.B <- (alpha.B+sum.B)/(beta.B+n.B)^2
+E.B/V.B
+
+```
+
+If the Poisson model were a reasonable one, a typical value of t^(s) would be the sample average of a poisson divided by the sample variance of a poisson. For a poisson model with parameter lambda, the expectation or mean is lambda and the variance is lambda. lambda/lambda is 1. 
+
+## 2(b)
+
+```{r}
+#histogram
+
+set.seed(50)
+#mc.theta.A <- rgamma(1000, alpha.A+sum.A, beta.A+n.A)
+#mc.y.A <- rpois(1000, mc.theta.A)
+tsA<- NULL
+for(i in 1:1000){
+  theta.A <- rgamma(10, alpha.A+sum.A, beta.A+n.A)
+  mc.y.A <- rpois(10, theta.A)
+  #n.0[i] <- mean(theta.B<theta.A)
+  tsA[i] <- (mean(mc.y.A)/var(mc.y.A))
+}
+
+hist(tsA,
+     main = "Histogram of t^(s) for y_A",
+     xlab = "t^(s)")
+abline(v=1.391201, col = "Lime Green")
+```
+
+The poisson model seems reasonable for this dataset because the mean/variance was about 1.4 for the data and the histogram seems to reflect this well.
+
+
+## 2(c)
+
+```{r}
+#repeat 2b
+
+set.seed(51)
+#mc.theta.B <- rgamma(1000, alpha.B+sum.B, beta.B+n.B)
+#mc.y.B <- rpois(1000, mc.theta.B)
+tsB<- NULL
+for(i in 1:1000){
+  theta.B <- rgamma(13, alpha.B+sum.B, beta.B+n.B)
+  mc.y.B <- rpois(13, theta.B)
+  #n.0[i] <- mean(theta.B<theta.A)
+  tsB[i] <- (mean(mc.y.B)/var(mc.y.B))
+}
+hist(tsB,
+     main = "Histogram of t^(s) for y_B",
+     xlab = "t^(s)")
+abline(v=3.927807, col = "Purple")
+```
+
+The poisson model does not seem to fit this data that well because of the fact that the mean/variance is about 3.9 and the simulated data from a poisson distribution does not match this since it produced data centered around 1 as seen in this histogram.

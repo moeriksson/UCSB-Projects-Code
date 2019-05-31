@@ -1,0 +1,124 @@
+---
+title: "Pstat 115, Homework 2"
+author: "Marcus Eriksson, Eddie Bermudez"
+date: "Section W 4pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1) Cancer Research in Laboratory Mice
+
+###a) 
+We expect both groups of mice to have equal average instances of cancer since the specified prior distributions have the same means. We are more certain about the prior for the mice from group A since they have been studied more and the prior distribution tells us that we have more mice to base our conclusions on. 
+
+###b)  Posterior distributions of y_a and y_b
+Posterior distributions:
+
+For y_a = Gamma(( 120 + Sum(Y_i)), 20)
+
+For y_b = Gamma((12 + sum(Y_i)), 14)
+
+Posterior means: 
+
+For y_a: 11.85
+
+For y_b: 8.93
+
+Posterior variance:
+
+For y_a: .5925
+
+For y_b: .6377
+
+
+95% Credible intervals:
+```{r}
+
+
+qgamma(c(.025,.975), shape = 237, rate =20)
+
+qgamma(c(.025,.975), shape = 125, rate = 14)
+```
+For y_a: (10.38924,  13.40545)
+For y_b: (7.432064, 10.560308)
+
+
+###c) Posterior Expectation of group B
+
+```{r}
+n_0 <- (1:50)
+
+ex <- (12*n_0 +113)/(n_0+13)
+plot(ex, main = "Plot of Expectation of Group B", ylab = "Expectation")
+```
+
+###d) Should knowledge about population A tell us anything about population B?
+
+Information from population A most certainly should give us information about population B since it is known that the mice in both populations are related. Because of this it does not make sense to have p(A, B) = p(A) * P(B) since we know the species are related and therefore should not be treated as completely independent of each other.
+
+
+
+###2)
+
+###a)
+
+The first expert expects a mean rate of .0015 while the second expert expects a mean rate of .007. The second experts seems more confident about their prediction regarding the value of lambda since they based it off of more observations.
+
+
+###b) Plotting the mixture distribution:
+
+```{r}
+library(graphics)
+#x<- rpois(1,3)
+
+curve(.5*(((2000^3) * (x^(2)) * exp(-2000*x)) / 
+gamma(3)) + (((1000^7) * (x^(6)) * exp(-1000*x))/(gamma(7))) 
+, from = 0, to = 1, main = "Plot of prior density", ylab = "Counts",
+    xlab = "Probability", col = "Red", xlim = c(0, .1))
+
+
+
+```
+
+###c) See additional file
+
+###d) See additional file
+
+
+###e) Plotting the posterior distribution:
+
+
+```{r}
+
+
+curve(((1767^8)/(2*factorial(8)))*(((3767^11) * (x^(10)) 
+* exp(-3767*x)) / gamma(11)) + (((2767^15) * (x^(14)) 
+* exp(-2767*x))/(gamma(15))) 
+, from = 0, to = 1, main = "Plot of Posterior density" ,
+ylab = "Counts", xlab = "Probability", col = "Red", xlim = c(0,.05))
+
+legend("topright",
+legend=c("Expert 1 prior mean",
+"Expert 2 prior mean","Maximum likelihood estimate"),
+col=c("Blue", "Green", "Black"),pch=rep(19,2))
+abline(v = .0015, col = "Blue" ) #expert 1 prior mean
+abline(v = .007, col = "Green") #expert 2 prior mean
+abline(v= .01)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

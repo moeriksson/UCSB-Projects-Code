@@ -1,0 +1,448 @@
+---
+title: "Pstat 115, Homework 6"
+author: "Marcus Eriksson"
+date: "Section W 4pm"
+output: pdf_document
+---
+
+###1) Logistic regression for toxicity data:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=TRUE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '      
+indent2 = paste(rep(indent1, 2), collapse='')
+```
+
+
+
+
+```{r}
+x <- c(-0.86, -0.3, -0.05, 0.73)
+n <- rep(5, 4)
+y <- c(0, 1, 3, 5)
+
+```
+
+
+####a) See attached file
+
+
+####b) Solve for LD50:
+
+```{r}
+dbinom(y, n, .5, log = FALSE)
+```
+
+
+
+####c) Implementing a Metropolis Hastings algorithm:
+
+```{r}
+set.seed(1)
+library(coda)
+library(MASS)
+library(tidyverse)
+alpha_t = 1
+beta_t = 1
+
+mvrnorm(1, c(alpha_t, beta_t), matrix(c(1.0, 0.0, 0.0, 1.0), nrow = 2))
+
+
+logp = function(theta) {
+sum(dnorm(theta, c(1.0, 1.0), c(1.0, 1.5), log = TRUE))
+}
+metropolis = function(theta_s, cov) {
+# Note: theta_s is a vector now!
+theta_p = mvrnorm(1, theta_s, cov)
+
+if(logp(theta_p) > logp(theta_s)) {
+return(theta_p)
+} else {
+r = runif(1)
+if(log(r) < logp(theta_p) - logp(theta_s)) {
+return(theta_p)
+} else {
+return(theta_s)
+}
+}
+}
+# theta_0 is your initial parameter guess
+# burnin is number of burnin samples
+# maxit are the number of samples you generate (post burnin)
+# cov is the proposal covariance matrix
+rw_metrop_multi = function(theta_0, burnin, maxit, cov) {
+samples = matrix(0, ncol = length(theta_0), nrow = burnin + maxit)
+samples[1,] = theta_0
+for(i in 1:(nrow(samples) - 1)) {
+samples[i + 1,] = metropolis(samples[i,], cov)
+}
+samples[burnin:(burnin + maxit),]
+}
+
+
+samples = rw_metrop_multi(c(10.0, 10.0), 1000, 10000, matrix(c(1.0, 0.0, 0.0, 1.0), nrow = 2))
+
+plot(as.mcmc(samples))
+effectiveSize(samples)
+acf(samples)
+```
+Effective sample size and acceptance rates: 
+for alpha: 1110.7642, 11.1%
+for beta: 597.1462, 5.97%
+
+
+####d) Tune the parameters to achieve a reasonable acceptance rate:
+
+
+```{r}
+set.seed(1)
+alpha_t = 1
+beta_t = 1
+
+mvrnorm(1, c(alpha_t, beta_t), matrix(c(1.0, 0.0, 0.0, 1.0), nrow = 2))
+
+
+logp = function(theta) {
+sum(dnorm(theta, c(1.0, 1.0), c(1.0, 1.5), log = TRUE))
+}
+metropolis = function(theta_s, cov) {
+# Note: theta_s is a vector now!
+theta_p = mvrnorm(1, theta_s, cov)
+
+if(logp(theta_p) > logp(theta_s)) {
+return(theta_p)
+} else {
+r = runif(1)
+if(log(r) < logp(theta_p) - logp(theta_s)) {
+return(theta_p)
+} else {
+return(theta_s)
+}
+}
+}
+# theta_0 is your initial parameter guess
+# burnin is number of burnin samples
+# maxit are the number of samples you generate (post burnin)
+# cov is the proposal covariance matrix
+rw_metrop_multi = function(theta_0, burnin, maxit, cov) {
+samples = matrix(0, ncol = length(theta_0), nrow = burnin + maxit)
+samples[1,] = theta_0
+for(i in 1:(nrow(samples) - 1)) {
+samples[i + 1,] = metropolis(samples[i,], cov)
+}
+samples[burnin:(burnin + maxit),]
+}
+
+
+samples = rw_metrop_multi(c(10.0, 10.0), 100, 10000, matrix(c(10, .0, .00, 10), nrow = 2))
+
+plot(as.mcmc(samples))
+effectiveSize(samples)
+acf(samples)
+
+```
+
+
+
+
+
+
+####e) Using output from the Metropolis algorithm, make a plot showing 50% & 95% confidence bands for the probability of death:
+
+50% and 95% confidence bands:
+
+```{r}
+
+xgrid <- seq(-1, 1, by = 0.01)
+
+
+compute_curve <- function(samples) {
+beta_0 <- samples[1]
+beta_1 <- samples[2]
+beta_0 + beta_1 * xgrid
+}
+
+res <- apply(samples, 1, compute_curve)
+quantiles <- apply(res, 1, function(x) quantile(x, c(0.025, 0.25, 0.75, 0.975)))
+posterior_mean <- rowMeans(res)
+tibble(x=xgrid, q025=quantiles[1, ], q25=quantiles[2, ],
+q75=quantiles[3,], q975=quantiles[4, ], mean=posterior_mean) %>% ggplot() +
+geom_ribbon(aes(x=xgrid, ymin=q025, ymax=q975), alpha=0.2) +
+geom_ribbon(aes(x=xgrid, ymin=q25, ymax=q75), alpha=0.5) +
+geom_line(aes(x=xgrid, y=posterior_mean), size=1)
+# geom_vline(xintercept = mean(-samples[, 1]/samples[, 2]), linetype="dashed") +
+# geom_hline(yintercept = 0.5, linetype="dashed")
+
+ggplot(tibble(x=xgrid, q025=quantiles[1, ], q25=quantiles[2, ],
+q75=quantiles[3,], q975=quantiles[4, ],mean=posterior_mean)) +
+geom_ribbon(aes(x=xgrid, ymin=q025, ymax=q975), alpha=0.2) +
+geom_ribbon(aes(x=xgrid, ymin=q25, ymax=q75), alpha=0.5) +
+geom_line(aes(x=xgrid, y=posterior_mean), size=1) +
+geom_point(data =data.frame(x= x, y = y) , aes(x= x, y = y), col = "blue")+ggtitle("50% and 95% confidence band for probability of death")
+```
+
+
+
+###2) Estimating skill in baseball:
+
+```{r}
+
+baseball_data <- read_csv("lad.csv", col_types=cols())
+## observed hits in the first 2 months
+y <- baseball_data$y
+## observed at bats in the first 2 months
+n <- baseball_data$n
+## observed batting average in the first 2 months (same as MLE)
+theta_mle <- y/n
+## number of players
+J <- nrow(baseball_data)
+## end of the year batting average, used to evaluate estimates
+val <- baseball_data$val
+
+val
+theta_mle
+```
+
+
+####a) RMSE:
+
+```{r}
+
+
+theta_hat_comp <- sum(y)/sum(n)
+theta_hat_comp
+mean(theta_mle)
+
+rmse1 = sqrt((1/J)*(sum((theta_mle-val)^2)))
+
+rmse1
+
+rmse2 = sqrt((1/J)*(sum((theta_hat_comp-val)^2)))
+rmse2
+
+
+```
+
+Based on the root mean squared error the no pooling estimator performed better than the complete pooling estimator. 
+
+####b) 
+
+```{r}
+set.seed(1)
+tau = .05
+
+theta_i <- rnorm(10, theta_hat_comp, tau)
+bb_dgp <- rnorm(1000, theta_i, sqrt((theta_i*(1-theta_i))/n))
+
+
+#sample with the max of theta_i 
+bb_dgp1 <- rnorm(1000, max(theta_i), sqrt((theta_i*(1-theta_i))/n))
+
+#sample with the min of theta_i 
+bb_dgp2 <- rnorm(1000, min(theta_i), sqrt((theta_i*(1-theta_i))/n))
+
+
+hist(bb_dgp1, main = "Histogram of max values of samples", xlab = "Estimate")
+abline(v = 0.3496933, col = "dodgerblue", lwd = 2)
+
+hist(bb_dgp2, main = "Histogram of min values of samples", xlab = "Estimate")
+abline(v = 0.2075472, col = "dodgerblue", lwd = 2)
+```
+
+The data generating model does seem to be consistent with what we see in the actual Dodger's batting data. The highest and lowest batting averages found in the batting data are just about in the center of the maximums and minimums from the generated data.   
+
+
+###c) 
+
+
+```{r}
+set.seed(1)
+
+#test for tau approaching zero
+tau = .00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+
+theta_i <- rnorm(10, mean(val), tau)
+bb_dgp_0 <- rnorm(1000, theta_i, sqrt((theta_i*(1-theta_i))/n))
+
+mean(bb_dgp_0)
+
+
+
+#test for tau approaching infinity
+tau1 = .04
+
+theta_i <- rnorm(10, mean(val), tau1)
+bb_dgp_inf <- rnorm(1000, theta_i, sqrt((theta_i*(1-theta_i))/n))
+
+mean(bb_dgp_inf)
+```
+
+As tau goes to zero the posterior mean will approach the complete pooling estimate and as tau increases we expect the the posterior mean to be closer to the no pooling estimate; this makes sense since with a tau closer to zero we decrease the variance meaning that we should be getting closer to the true value.
+
+
+###d) Implement a Gibbs sampler:
+
+```{r}
+set.seed(1)
+J <- 10
+y <- c( 18, 22, 52, 48, 27, 26, 32, 57, 36, 39)
+n <- c(86, 106, 210, 199,  94, 122, 129, 163, 137, 155)
+as.list(y)
+as.list(n)
+
+## one value for mu
+mu_cur <- .25
+
+## fix the variance of the prior to a number
+tau <- .05
+
+theta_cur <- rnorm(10, mu_cur, tau)
+
+sigma <- sqrt((theta_cur*(1-theta_cur))/n)
+
+
+
+## Gibbs sampler function
+gibbs <- function(y, sigma, 
+                  init=list(theta=rep(0.25, length(y)), mu=mean(y/n), tau=1),
+                                      sample_tau = FALSE, burnin, maxit) {
+    
+    ## set starting point for Markov Chain
+    tau_cur = init$tau
+    prec <- 1/sigma^2
+    mu_cur <- sum(prec * y / sum(prec))
+    J <- length(y)
+
+    # Allocate space for results.
+    theta_out <- matrix(NA, nrow=burnin + maxit, ncol=J)
+    mu_out <- numeric(burnin + maxit)
+    
+    ## ...cont
+    for(i in 1:(burnin + maxit)){
+      
+      for(j in 1:J) {
+        theta_cur[j] 
+      }
+      
+      mu_cur <- 
+      
+      ##  save samples
+      theta_out[i, ] <- theta_cur
+      mu_out[i] <- mu_cur
+
+    }
+    
+      ## Chop off the first part of the chain -- this reduces dependence on the starting point.
+    if(burnin == 0) {
+      list(theta_out=theta_out, mu_out=mu_out)
+    }
+    else {
+      list(theta_out=theta_out[-(1:burnin), ], mu_out=mu_out[-(1:burnin)])
+    }
+}
+
+gibbs_samples <- gibbs(y, sigma, init = list(theta = y, mu = mean(y), tau = .05), sample_tau = FALSE, 10, 1)
+
+gibbs_samples
+
+#rmse
+rmsegs1 = sqrt((1/J)*(sum((gibbs_samples$theta_out-gibbs_samples$mu_out)^2)))
+rmsegs1
+
+```
+
+Posterior means:  0.2312644, 0.3920093, 0.2866197, 0.2920259, 0.1390174, 0.1836268, 0.201167, 0.2206462, 0.2215994, 0.2821820
+
+Mu: 0.2312644
+
+RSME: 0.06861382
+
+We obtain the best prediction from the no-pooling estimator since it had the smallest RSME at just 0.02479514.
+
+
+Effective Sample Size and ACF plot:
+
+```{r}
+set.seed(1)
+
+
+g_samples <- as.mcmc(gibbs_samples$theta_out)
+
+effectiveSize(g_samples)
+acf(g_samples)
+
+
+
+mu_cur <- .25
+
+## fix the variance of the prior to a number
+tau <- .001
+
+theta_cur <- rnorm(10, mu_cur, tau)
+
+sigma <- sqrt((theta_cur*(1-theta_cur))/n)
+
+
+
+## Gibbs sampler function
+gibbs1 <- function(y, sigma, 
+                  init=list(theta=rep(0.25, length(y)), mu=mean(y/n), tau=1),
+                                      sample_tau = FALSE, burnin, maxit) {
+    
+    ## set starting point for Markov Chain
+    tau_cur = init$tau
+    prec <- 1/sigma^2
+    mu_cur <- sum(prec * y / sum(prec))
+    J <- length(y)
+
+    # Allocate space for results.
+    theta_out <- matrix(NA, nrow=burnin + maxit, ncol=J)
+    mu_out <- numeric(burnin + maxit)
+    
+    ## ...cont
+    for(i in 1:(burnin + maxit)){
+      
+      for(j in 1:J) {
+        theta_cur[j] 
+      }
+      
+      mu_cur <- 
+      
+      ##  save samples
+      theta_out[i, ] <- theta_cur
+      mu_out[i] <- mu_cur
+
+    }
+    
+      ## Chop off the first part of the chain -- this reduces dependence on the starting point.
+    if(burnin == 0) {
+      list(theta_out=theta_out, mu_out=mu_out)
+    }
+    else {
+      list(theta_out=theta_out[-(1:burnin), ], mu_out=mu_out[-(1:burnin)])
+    }
+}
+
+gibbs_samples1 <- gibbs1(y, sigma, init = list(theta = y, mu = mean(y), tau = .05), sample_tau = FALSE, 10, 1)
+
+g_samples1 <- as.mcmc(gibbs_samples1$theta_out)
+
+effectiveSize(g_samples1)
+acf(g_samples1)
+
+```
+
+It seems that the autocorrelation decays very quickly for both samples which is a good sign; it appears that for tau = .001 our samples become stationary faster.
+
+
+
+
+
+
+
+
+
