@@ -1,0 +1,76 @@
+---
+title: "174 hw1"
+author: "Marcus Eriksson"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+###Plots for 3
+```{r}
+require(graphics)
+#white noise:
+z_t <- rnorm(300,0,1)
+plot(z_t,xlab = "t",ylab = expression(z[t]),type = "l",main = "White Noise of Z")
+
+#ACF:
+acf(z_t, lag.max = NULL, type = c("correlation"),
+  plot = TRUE, na.action = na.contiguous, demean = TRUE)
+
+plot(z_t^2,xlab = "t",ylab = expression(z[t]),type = "l",main = "White Noise of Y")
+
+acf(z_t^2, lag.max = NULL, type = c("correlation"),
+  plot = TRUE, na.action = na.contiguous, demean = TRUE)
+
+```
+
+###Solve matrices for 4
+```{r}
+#setup matrix
+
+A=matrix(c(6,4,-2,1,-1,2,-2, 1, -1),ncol=3,byrow=T)
+A
+#Solve:
+
+b=c(2,-1,0)
+A_inverse=solve(A)
+solution=A_inverse%*%b
+solution
+```
+
+###Check answers for 5
+```{r}
+polyroot(c(1,-2))
+
+polyroot(c(1,-.45,.05))
+```
+
+
+#Homework 2
+
+```{r}
+ma1 <- arima.sim(model = list(ma = c(0.5,-1),sd = 1),n = 200)
+# Theoretical ACF
+theo_acf <- ARMAacf(ma = c(0.5,-1),lag.max = 20, pacf = FALSE)
+theo_acf
+# Plot
+op <- par(mfrow = c(1,2))
+plot(theo_acf,type = "h",ylim = c(-1,1),
+main = "Theoretical ACF",
+col = "red",
+ylab = expression(rho[X](h)),
+xlab = "h")
+abline(h = 0) # Add horizontal line
+# Sample ACF
+acf(ma1,lag.max = 20,
+main = "Sample ACF",
+ylim = c(-1,1),
+xlab = "h",
+ylab = expression(hat(rho)[X](h)))
+
+```
+
+

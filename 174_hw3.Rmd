@@ -1,0 +1,56 @@
+---
+title: "174 hw3 code"
+author: "Marcus Eriksson"
+output: pdf_document
+---
+
+###Code For #6
+Process a)
+
+```{r}
+arma11 <- arima.sim(model = list(ar = c(-0.6),ma = c(1.2),sd = 1),n = 100)
+# Theoretical ACF
+sample1_tacf=theo_acf <- ARMAacf(ar = -0.6, ma = 1.2,lag.max = 10, pacf = FALSE)
+sample1_tacf #display values of acf by lag 
+# Plot
+op <- par(mfrow = c(1,2))
+plot(theo_acf,type = "h",ylim = c(-1,1),
+main = "Theoretical ACF ARMA(1,1)",
+col = "red",
+ylab = expression(rho[X](h)),
+xlab = "h")
+abline(h = 0) # Add horizontal line 
+# Sample ACF
+sample1_acf=acf(arma11,lag.max = 10,
+main = "Sample ACF ARMA(1,1)",
+ylim = c(-1,1),
+xlab = "h",
+ylab = expression(hat(rho)[X](h)))
+sample1_acf #display values of acf by lag
+```
+
+Process b)
+
+```{r}
+ar2 <- arima.sim(model = list(ar = c(-0.2,0.48),sd = 1),n = 100)
+# find the theoretical ACF
+?ARMAacf
+theo_acf <- ARMAacf(ar = c(-0.2,0.48),lag.max = 10, pacf = FALSE)
+op <- par(mfrow = c(1,2))
+theo_acf #display values of acf by lag
+# plot the theoretical ACF
+plot(theo_acf,type = "h",ylim = c(-1,1),
+main = "Theoretical ACF AR(2)",
+col = "red",
+ylab = expression(rho[X](h)),
+xlab = "h")
+abline(h = 0) # Add horizontal line
+# calculate the sample ACF
+sample_acf=acf(ar2,lag.max = 10,
+main = "Sample ACF AR(2)",
+ylim = c(-1,1),
+xlab = "h",
+ylab = expression(hat(rho)[X](h)))
+sample_acf #display values of acf by lag
+```
+

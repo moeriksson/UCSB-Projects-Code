@@ -1,0 +1,83 @@
+---
+title: "Homework 4 code"
+author: "Marcus Eriksson"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+###Checking stationarity for 2b:
+```{r}
+polyroot(c(1,.2,-.35))
+```
+
+###4) Analyze in R the deaths.txt dataset
+
+###a)
+```{r}
+getwd()
+deaths <- read.table("deaths.txt") #read in data
+deaths <- ts(deaths) #create ts object
+
+```
+
+```{r}
+#basic time series plot of deaths.txt
+ts.plot(deaths)
+var(deaths)
+mean= 8787.736
+#plot ACF and PACF of the data
+acf(deaths)
+pacf(deaths)
+```
+Variance = 918,411.7
+Mean = 8787.736
+
+Looking at the times series plot of the data we can see that there is definitely a seasonal component. The data seemingly "repeats" every 12 units of time (presumably months). By looking at the ACF plot we consistently see significant "waves" with peaks every 6th lag. The PACF indicates that the values in the data set are strongly correlated with each other.
+
+###b)
+
+```{r}
+#de-seasonalize the data:
+d1=diff(deaths,12) #let d1= first difference operation
+plot(d1,main = "De-Seasonalized Time Series",ylab = expression(nabla~Y[t]))
+abline(h = 0,lty = 2)
+
+var(d1) #variance of de-seasonalized data
+
+acf(d1)
+title("ACF of De-Seasonalized Time Series", line = -1, outer=TRUE) #plot of acf of de-seasonalized data
+
+pacf(d1)
+title("PACF of De-Seasonalized Time Series", line = -1, outer=TRUE) #plot of pacf of de-seasonalized data
+
+```
+Variance = 288714.5
+
+After differencing our time series once we do see some improvement as variance decreased significantly and in the ACF plot the highest significant lag was 6 compared to 12 in the original ACF plot. In the PACF plot there is not much improvement from the original data. I decided to difference the time series at 12 due to the period having a length of 12.
+
+
+
+```{r}
+#de-trend the data:
+d2=diff(d1,24) #let d2= second difference operation
+plot(d2,main = "De-trended & De-seasonalized Time Series",ylab = expression(nabla^{2}~Y[t]))
+abline(h = 0,lty = 2)
+var(d2) #variance of de-trended data
+
+acf(d2)
+title("ACF of De-trended Time Series", line = -1, outer=TRUE) #plot of acf of de-trended data
+
+pacf(d2)
+title("PACF of De-trended Time Series", line = -1, outer=TRUE) #plot of pacf of de-trended data
+
+```
+Variance = 250903.3
+
+We see a decrease in variance from the first difference operation. The plot looks more like a random or white noise process after the second difference operation. Examining the ACF and PACF plots of the second difference operation we see that there are no significant ACF/PACF values after zero; it appears that we have achieved a stationary time series!
+
+
+

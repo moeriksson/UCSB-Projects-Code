@@ -1,0 +1,57 @@
+---
+title: "174 hw2 code"
+author: "Marcus Eriksson"
+date: "February 8, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Plots for #1:
+```{r}
+require(graphics)
+
+ma1 <- arima.sim(model = list(ma = c(0.5,-1),sd = 1),n = 200)
+plot(ma1)
+# Theoretical ACF
+theo_acf <- ARMAacf(ma = c(0.5,-1),lag.max = 20, pacf = FALSE)
+theo_acf
+# Plot
+op <- par(mfrow = c(1,2))
+plot(theo_acf,type = "h",ylim = c(-1,1),
+main = "Theoretical ACF",
+col = "green",
+ylab = expression(rho[X](h)),
+xlab = "h")
+abline(h = 0) # Add horizontal line
+# Sample ACF
+acf(ma1,lag.max = 20,
+main = "Sample ACF",
+ylim = c(-1,1),
+xlab = "h",
+ylab = expression(hat(rho)[X](h)))
+
+```
+
+###Code for 2
+```{r}
+polyroot(c(1,-1.33,.33))
+polyroot(c(1,2.5,1))
+```
+
+
+###Code for 3
+```{r}
+ma2 <- arima.sim(model = list(ma = c(1,2,-8),sd = 1),n = 300)
+plot(ma2)
+acf(ma2)
+```
+
+###Code for 5
+```{r}
+polyroot(c(1,-1,-2))
+polyroot(c(1,-.5,-.5))
+```
+
