@@ -1,0 +1,96 @@
+Marcus Eriksson
+
+Pstat 126
+
+Prof. Petersen
+
+#Homework 6
+
+```{r include=FALSE}
+require(alr4)
+require(faraway)
+require(car)
+require(effects)
+require(carData)
+require(Rcpp)
+
+
+
+```
+
+###1.
+
+Forward Selection:
+
+```{r}
+library(alr4)
+attach(mantel)
+mantel = with(mantel, data.frame(X1,X2, X3))
+fit.full<-lm(X1~. , data = mantel)
+fit.constant<-lm(X1~1, data = mantel)
+
+step(fit.constant, scope = list(upper=formula(fit.full)), direction = "forward", k = 2 )
+```
+
+
+Backward Selection:
+
+```{r}
+step(fit.constant, scope = list(lower= formula(fit.full)), direction = "backward", k = 2)
+```
+
+
+
+###2.
+
+For the statistics shown we get the following values:
+
+  ei          hii       ri        Di      ti
+  1.000       .900    .7905     1.12     .99611
+  1.732       .750    .866      .449     .8637
+  9.000       .250    2.598     .4499   2.769 
+  10.295      .185    2.85      .3687   3.088
+
+From looking at Cook's distance (Di) we see that the first observation has a Cook's value more than double of the other observations and therefore is likely an outlier in our data set.
+
+
+###3
+
+
+a)
+```{r}
+library(alr4)
+attach(lathe1)
+mod<- lm(Life ~ Speed + Feed + I(Speed^2)+ I(Feed^2) + I(Speed*Feed) )
+library(MASS)
+boxcox(mod, xlab= expression(lambda(y)))
+```
+
+
+Here we see the graph of the log likelihood which tells us that a log-transformation would probably be a good idea since the 95% CI is very narrow and includes zero.
+
+b) We want the two cases which are the most influential in fitting the quadratic mean function for log(life)
+
+
+```{r}
+fitlife <- lm(logb(Life,2)~ Speed+Feed+I(Speed^2)+I(Feed^2)+I(Speed*Feed))
+influencePlot(fitlife)
+summary(fitlife)
+```
+
+
+The two cases which are the most influential are points 9 and 10 since they have large values for Cook's distance.
+
+```{r}
+newfit <-lathe1[c(1:8,11:20),]
+fitlife<-lm(logb(Life,2)~Speed+Feed+I(Speed^2)+I(Feed^2)+I(Speed*Feed),data=lathe1)
+updatedfit<-lm(logb(Life,2)~Speed+Feed+I(Speed^2)+I(Feed^2)+I(Speed*Feed),data=newfit)
+
+summary(fitlife)
+summary(updatedfit)
+avPlots(fitlife)
+avPlots(updatedfit)
+```
+
+Examining our new model where we removed the most influential observations, we notice that it does not seem to have much of an effect on the
+fitted model.

@@ -1,0 +1,107 @@
+---
+title: "Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+
+library(readxl)
+Students <- read_excel("C:/Users/Marcus/Desktop/Pstat 126/Students.xlsx")
+
+```
+
+
+```{r}
+#model number 1 with all predictors
+fit1 <- lm(G3~Pstat+FamMaxedu+MorFteach+Famsup+Paid+Famrel, data=Students)
+plot(fit1)
+summary(fit1)
+anova(fit1)
+
+```
+
+
+
+
+
+
+
+
+```{r}
+#model number 1 with transformation on G3
+fit1.1 <- lm(G3^2~Pstat+FamMaxedu+MorFteach+Famsup+Paid+Famrel, data=Students)
+plot(fit1.1)
+summary(fit1.1)
+anova(fit1.1)
+```
+
+
+
+```{r}
+#backward selection for model 1
+step(lm(G3^2~Pstat+FamMaxedu+MorFteach+Famsup+Paid+Famrel, data = Students, direction = "backward"))
+```
+
+
+```{r}
+#modified model 1 obtained via backward selection
+fit1.2 <- lm(G3^2~FamMaxedu+Famsup, data=Students)
+summary(fit1.2)
+anova(fit1.2)
+```
+
+Notice that our R^2 value has not decreased much from our original model; indicating that we have the most influential predictors in our now model from performing backward selection.
+
+
+
+--------------------------------
+
+
+```{r}
+#model 2 with all predictors
+fit2 <- lm(G3~Absences+Dalc+Walc+Goout+Romantic+Activities+studytime, data=Students)
+plot(fit2)
+summary(fit2)
+anova(fit2)
+
+```
+
+
+
+
+
+
+```{r}
+#model 2 with transformation on response
+fit2.1 <- lm(G3^2~Absences+Dalc+Walc+Goout+Romantic+Activities+studytime, data=Students)
+plot(fit2.1)
+summary(fit2.1)
+anova(fit2.1)
+```
+
+
+
+
+
+```{r}
+#backwards selection for model 2
+step(lm(G3^2~Absences+Dalc+Walc+Goout+Romantic+Activities+studytime, data = Students, direction = "backward"))
+```
+
+
+
+```{r}
+#modified model 2 obtained via backward selection
+fit2.2 <- lm(G3^2~Goout+Romantic+studytime, data=Students)
+summary(fit2.2)
+anova(fit2.2)
+```
+
+
+
+

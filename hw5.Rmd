@@ -1,0 +1,127 @@
+Marcus Eriksson
+
+Pstat 126
+
+Prof. Petersen
+
+#Homework 5
+
+```{r include=FALSE}
+require(alr4)
+require(faraway)
+require(car)
+require(effects)
+require(carData)
+require(Rcpp)
+
+
+
+```
+
+###1.
+
+We have the fitted model for lpsa with lcavol as the predictor
+
+lpsa = 1.507 + 0.719 lcavol
+
+using the equation: 100(((1+p)^.719)-1)
+let p=.10
+
+This model tells us that for a 10% increase in lcavol, on average we expect to see a 7.09% increase in lpsa.
+
+###2
+
+If we have:
+
+E(Salary|Sex) = 24697 ??? 3340Sex 
+
+Where sex=1 for female and sex=0 for male; then:
+
+a) This means that we expect a female faculty member to earn $3340 less than male faculty members; or we could say that we expect male faculty to earn $3340 more than female faculty.
+
+b) We have the model:
+
+E(Salary|Sex, Years) = 18065 + 201Sex + 759Years
+
+We can see that the sign of the coefficent for sex changed from our equation for the expected value of salary given sex. This probably indicates that on average newly hired female faculty earn more than males but as time spent working at the college increases, male faculty tend to get offered better raises and promotions.
+
+##3
+a) We want to fit the model: E(Y|X1, X2) = Beta0 + Beta1X1 + Beta2X2 + Beta11X12 + Beta22X22 + Beta12X1X2
+
+
+```{r}
+data("cakes")
+attach(cakes)
+summary(ml <- lm(Y~ X1+X2+I(X1^2)++I(X2^2)+X1:X2,data=cakes))
+```
+
+We see that all of our p-values for the quadratic terms and the interaction are less than .005
+
+b) We will add a main effect for the block variable to model in part a)
+
+```{r}
+m2 <- update(ml, ~factor(block)+.)
+anova(m2)
+```
+
+From our analysis with a block we see that blocking did not make a significant difference in this case as our p-values were and are still very small.
+
+
+
+##4
+
+a) We want a scatterplot of the heights of 18 year olds vs the heights of 9 year olds:
+
+
+```{r}
+library(alr4)
+attach(BGSall)
+plot(BGSall$HT18~BGSall$HT9, pch = c(1,6)[BGSall$Sex+1])
+legend('topleft',pch=c(1,6), legend= unique(Sex))
+
+
+
+```
+
+*Note 0 represents male observations and 1 represents female observations.
+
+b) We want a test for our parralel regression model:
+
+```{r}
+ m2 <- lm(HT18 ~ Sex+ HT18+HT9) 
+ m1 <- update(m2,~.+Sex:(HT9+HT18))
+anova(m2,m1)
+```
+
+It appears that we can conclude that the means are different for males and females.
+
+c) We want a 95% confidence interval for the difference between males and females:
+
+For 18 year olds:
+```{r}
+t.test(HT18~Sex, data=BGSall, conf.level=.95)
+```
+
+For 9 year olds:
+
+```{r}
+t.test(HT9~Sex, data=BGSall, conf.level=.95)
+```
+
+For 18 year olds we have a 95% CI of (10.29, 14.57) and for 9 year olds we have a 95% CI of (-1.09, 2.63)
+
+##5
+
+a) Null and alternative hypotheses for the overall F-test:
+H0: income and region have no effect on mortality. Ha: Either region, income or both region and income have some effect on mortality. 
+
+b) Beta12 = Beta2 = 0; the meaning of this null hypothesis is that log(mortality) is independent of region and the interaction of income and region.
+
+c) Test for the hypothesis in part b)
+
+```{r}
+#library(faraway)
+#model.ur=lm(log(mortality))~log(income)+region+region*log(income),data=infmort))
+```
+
+
