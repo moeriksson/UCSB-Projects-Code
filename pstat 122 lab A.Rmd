@@ -1,0 +1,349 @@
+---
+title: "Pstat 122, Lab A"
+author: "Marcus Eriksson"
+date: "Section W 6pm, Caroline"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1) 
+
+####a) Response variable:
+The response variable which the researchers reported on was breast cancer reoccurance. 
+
+####b) Factors mentioned:
+According to the study, the possible factors contributing to breast cancer reoccurance are insulin overweightness and insulin levels. The study mentions that high insulin levels from being overweight may be a very strong predictor of breast cancer reoccurance as well as severity of the cancer. (increased death risk)
+
+
+####c) Based on the abstract was replication and randomization used?
+It does appear that replication was used in the study as the study was conducted over a 10 year period. We are given that 512 women were included in the study but we have no indication that they were randomly selected or that treatments were randomly assigned. 
+
+
+###2) Does Kudzu increase bone density? 
+
+####a) Use graphical (eg, boxplots) and numerical methods(group means, sd etc) to describe the data
+
+```{r}
+#read in the dataset
+bmd_data <- read.table("BMDdata.txt", sep = "", header = TRUE)
+bmd_data
+```
+
+
+Boxplots:
+
+```{r}
+boxplot(BMD~g, data = bmd_data, xlab = "Treatment group", ylab = "Bone mineral density ")
+```
+
+Means and variance by group:
+
+```{r}
+#create subsets with each treatment
+#control
+bmd_control <- bmd_data[bmd_data$g == 1,]
+mean_c <- mean(bmd_control$BMD)
+var_c <- var(bmd_control$BMD)
+
+#1st treatment
+bmd_treat1 <- bmd_data[bmd_data$g == 2,]
+mean_t1 <- mean(bmd_treat1$BMD)
+var_t1 <- var(bmd_treat1$BMD)
+
+#2nd treatment group
+bmd_treat2 <- bmd_data[bmd_data$g == 3,]
+mean_t2 <- mean(bmd_treat2$BMD)
+var_t2 <-var(bmd_treat2$BMD)
+
+
+
+```
+
+Mean and variance of control group:
+
+```{r}
+mean_c
+var_c
+```
+
+Mean and variance of low dose treatment:
+
+```{r}
+mean_t1
+var_t1
+```
+
+Mean and variance of high dose treatment:
+
+```{r}
+mean_t2
+var_t2
+```
+
+From examing the boxplot and the means and variances of the 3 groups it looks as if the low dose treatment does not have an effect on bone mineral density and the high dose treatment likely does have an effect.
+
+####b) What statistical model would you use to analyze this data?
+
+To analyze this data it would probably be a good idea to perform a one-way ANOVA to check if the means of either of the 2 treatments are different from the control. We are interested in this because we want to see if either of the treatments are effective in increasing bone mineral density.
+
+####c) Construct ANOVA table:
+
+```{r}
+bmd_model1 <- aov(BMD~g, data = bmd_data)
+anova(bmd_model1)
+
+```
+
+####d) Using alpha =0.05, is there any evidence that the groups differ with respect to mean BMD?
+
+From the analysis of variance table we see that there is evidence to suggest that the groups differ with respect to mean bmd. Our p-value is .005463 which tells us that we can reject the null hypothesis that all 3 groups have the same mean bmd.
+
+####e) For each of the groups, construct a 95% confidence interval for the mean BMD. Interpret.
+
+Control group:
+```{r}
+
+  
+#95% CI for control  
+bmd_model2 <- aov(BMD~g, data = bmd_control)
+
+confint.lm(bmd_model2)
+
+```
+
+Low dose treatment group:
+```{r}
+#95% CI for treatment 1  
+bmd_model3 <- aov(BMD~g, data = bmd_treat1)
+
+confint.lm(bmd_model3)
+```
+
+High dose treatment group:
+```{r}
+#95% CI for treatment 1  
+bmd_model4 <- aov(BMD~g, data = bmd_treat2)
+
+confint.lm(bmd_model4)
+```
+
+Examining the confidence intervals we see that there is a clear difference between the 2 treatment groups as their confidence intervals have zero overlap. There is minimal overlap between the upper bound of the interval for the control and the lower bound of the high dose treatment group; suggesting that their means are different. The confidence intervals for the control group and low dose treatment group are extremely similar which suggests that the low lose treatment does not have a significant effect on bone mineral density.
+
+
+####f)  Find a 99% confidence interval for the difference of the control group mean and the average of the treatment group means. Interpret.
+
+
+
+
+```{r}
+#data set without control
+no_control <- bmd_data[!bmd_data$treat=="control",]
+treat_mean <- mean(no_control$BMD)
+treat_var <- var(no_control$BMD)
+
+#dataset without treatments
+control <- bmd_data[bmd_data$treat == "control",]
+control_mean <- mean(control$BMD)
+control_var <- var(control$BMD)
+
+t_value <- qt(c(.005, .995), df=42)
+#confidence interval
+CI_diff <- treat_mean - control_mean + t_value*sqrt((treat_var/30)+(control_var/15))
+CI_diff
+```
+From our 99% confidence interval comparing the average of the 2 treatment groups against the control group we find that the treatment does not seem to have a significant effect on bone mineral density as the 99% confidence interval for the difference between the treatments and the control groups contain zero.
+
+
+
+####g) Use the Bonferroni method to look for statistically significant differences between pairs of treatment groups.
+Using a T-test:
+```{r}
+#no_control
+
+t.test(BMD~treat, data = no_control, p.adjust = "bonferroni")
+```
+
+By conducting a t-test with the Bonferroni correction to compare the two treatment groups we obtain a p-value of .002648 and a confidence interval which does not include zero. Therefore we can conclude that there is a significant difference between the two treatment groups. In this case we can see that the high dose treatment has a greater impact on bone mineral density.
+
+####h) Given that the objective is high bone density, is there one treatment that is preferable to the others? Justify your answer.
+
+Despite the fact our result was inconclusive when comparing the overall treatment mean to the control mean, from our tests we can at least conclude that high dose treatment is the preferable treatment due to the fact that our test comparing the treatment groups found that the high dose treatment had a stronger effect on bone mineral density. 
+
+####i) Analyze the residuals from this experiment. Which assumptions about the model are satisfied and which are not? Your answer should include all types of residual plots discussed in lecture
+
+```{r}
+
+plot(aov(bmd_model1))
+
+
+```
+Examining the residuals; there does not seem to be any serious problems. The residuals appear to be independently distributed and approxiamately normal. It looks like we do not have any outliers either.
+
+####j) Estimate the error variance:
+
+```{r}
+#install.packages("asbio")
+
+c(0,  0.002648/qchisq(p = 0.05, df = 42))
+```
+
+Our estimate is 0.002648 and the interval for the error variance is (0, 9.408738e-05)
+
+###3) Reaction time experiment:
+
+####a)  Identify a set of contrasts that you would find particularly interesting in this experiment. (Hint: A comparison between the auditory treatments and the visual treatments might be of interest). These are your preplanned contrasts
+
+An interesting contrast to observe should be auditory vs. visual; figuring out if there is a significant difference between the 2 different forms of stimuli. 
+
+
+
+####b) Plot the data (response on Y, treatment on X axis). What does the plot suggest about the treatments?
+
+```{r}
+react_data <- read.table("reaction.time.txt", sep = "", header = TRUE)
+
+plot(y~Trtmt, main  = "Reaction time by treatment", xlab = "Treatment", ylab = "Reaction time (sec)",data = react_data)
+```
+
+
+From examining the plot it appears subjects respond faster to auditory stimulas than to visual stimulus.
+
+####c) Test the hypothesis that the treatments do not have different effects on the reaction time against the alternative hypothesis that they do have different effects. State the model used, assumptions, test statistic, decision rule, ANOVA table and decision clearly.
+
+```{r}
+#react_data
+ react_model<- aov(y~Trtmt, data = react_data)
+anova(react_model)
+```
+
+When testing the null hypothesis that the different treatments do not have different effects on reaction time we reject the null and conlude that at least one treatment has a significantly different effect. Our p-value is very small at 8.522e-06, so there is a significant difference at every useful significance level alpha. 
+
+
+####d) Estimation of parameters:
+
+```{r}
+library(dplyr)
+react_data$Trtmt <- factor(react_data$Trtmt)
+(u.hat = mean(react_data$y))
+(treat.mean <- react_data %>%
+        group_by(Trtmt) %>%
+        summarise(mean_Treatment = mean(y)))
+ybar1 = treat.mean$mean_Treatment[1]
+ybar2 = treat.mean$mean_Treatment[2]
+ybar3 = treat.mean$mean_Treatment[3]
+ybar4 = treat.mean$mean_Treatment[4]
+ybar5 = treat.mean$mean_Treatment[5]
+ybar6 = treat.mean$mean_Treatment[6]
+(t1_hat = ybar1 - u.hat)
+(t2_hat = ybar2 - u.hat)
+(t3_hat = ybar3 - u.hat)
+(t4_hat = ybar4 - u.hat)
+(t5_hat = ybar5 - u.hat)
+(t6_hat = ybar6 - u.hat)
+```
+Estimates:
+
+estimate for overall mean: 0.2281
+treatment 1 mean: -0.04306
+treatment 2 mean: -0.04939
+treatment 3 mean: -0.01606
+treatment 4 mean: 0.04028
+treatment 5 mean: 0.03128
+treatment 6 mean: 0.03694
+estimate of variance (MSE) :0.00029
+
+
+
+####e) Set of simultaneous 90% CIs for preplanned contrasts: 
+
+```{r}
+#find interval lengths
+bonferroni_int <- qt(p = (0.1/2), df = (18-2), lower.tail = F)
+scheffe_int <- sqrt((2-1)*qf(p = 0.1, df1 = (2-1), df2 = (18-2), lower.tail = F))
+bonferroni_int
+scheffe_int
+
+c((((1/3)*(-0.04306 - 0.04939 - 0.01606))-((1/3)*(0.04028+0.03128+0.03694))) - scheffe_int*sqrt(0.00029*((6/9)/3)),
+      (((1/3)*(-0.04306 - 0.04939 - 0.01606))-((1/3)*(0.04028+0.03128+0.03694))) + scheffe_int*sqrt(0.00029*((6/9)/3)))
+```
+
+For the auditory vs. visual contrast we get a 90% confidence interval using Scheffe's method which is the following: (-0.08635215, -0.05832118). Since the upper and lower bounds of the interval are both negative we can conclude that there is a significant difference between auditory and visual cues reharding reaction time; in this case meaning that subjects respond significantly faster to auditory cues than visual cues.
+
+####f) Checking assumptions:
+
+Plotting residuals:
+
+```{r}
+plot(aov(react_model))
+```
+
+Examining the residual plots we see issues with normality; most notably in the qq-plot. Based on this it seems that the experimenter's concerns regarding fatigue were valid.
+
+####g) Fit a two way model to check if the auditory and visual stimulus has any signifcant effect on response time, and (ii) if the elapsed time have any signifcant effect on response time.
+
+```{r}
+
+react_2way = lm(y~A+B, data = react_data)
+anova(react_2way)
+```
+
+i) Based on the 2 way anova we can conclude that the 2 different cues do have a significant effect on response time; for this we obtained a p-value of 5.006e-07. 
+
+ii) From the 2 way anova we can also conclude that the elapsed time does not have a significant effect on response time; our p-value this time is .2818
+
+
+####h) Estimating all the model parameters:
+
+```{r}
+(treat.meanA <- react_data %>%
+        group_by(A) %>%
+        summarise(mean_stimulus = mean(y)))
+
+(treat.meanB <- react_data %>%
+        group_by(B) %>%
+        summarise(mean_time = mean(y)))
+mean_A1 = treat.meanA$mean_stimulus[1]
+mean_A2 = treat.meanA$mean_stimulus[2]
+mean_B1 = treat.meanB$mean_time[1]
+mean_B2 = treat.meanB$mean_time[2]
+mean_B3 = treat.meanB$mean_time[3]
+(u_hat = mean(react_data$y))
+(alphaA1.hat = mean_A1 - u_hat)
+(alphaA2.hat = mean_A2 - u_hat)
+(betaB1.hat = mean_B1 - u_hat)
+(betaB2.hat = mean_B2 - u_hat)
+(betaB3.hat = mean_B3 - u_hat)
+```
+
+Estimates of model parameters:
+
+estimate of overall mean: 0.2281
+estimate of alpha 1: -0.03617
+estimate of alpha 2:  0.03617
+estimate of beta 1: 0.001389
+estimate of beta 2: -0.009056
+estimate of beta 3: 0.01044
+variance estimate/MSE:  0.0003371
+
+####i) Estimate the error variance of this model, find 95% CI for sigma^2:
+
+```{r}
+
+c(0,   0.0003371/qchisq(p = 0.05, df = 15))
+```
+
+The estimate is the MSE which we have from the anova table as 0.0003371; our 95% confidence interval for the error variance is (0, .642647e-05 )
+
+####j) Based on the above two analysis can you drop one source of variation and suggest a the simplest model, that brings out the systematic variation just as well as the previous two models? Fit this model, show the ANOVA table and interpret.
+
+```{r}
+react_model2 = lm(y~A, data = react_data)
+anova(react_model2)
+```
+
+From the earlier 2-way anova it was determined that the elapsed time was insignificant so therefore it has been removed from the model. We keep the parameter for the levels of cue stimulus since the different cues were found to be significant. In our new model the p-value is 3.462e-07; meaning that our predictor is still significant which is what is desired. We now have a simpler model where all the predictors are significant.
+
+

@@ -1,0 +1,566 @@
+---
+title: "Pstat 122, Lab B"
+author: "Marcus Eriksson"
+date: "Section W 6pm, Caroline"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+###1) Does ingredient composition affect reaction time?
+
+####a) Design suitable for the data:
+
+Latin squares design is suitable for this data.
+
+####b) Model and Assumptions
+
+  LSD Model: $Y_{ijk} = \mu + \alpha_i + \beta_j + \tau_k + \epsilon_{ijk}$, where i,j,k =
+  1,2,3,4,5
+  
+  $Y_{ijk}$ = the reaction time of the kth treatment(ingredient), on the jth column block(day),
+  on the ith row block(batch)
+  
+  $\mu$ = general mean,
+  
+  $\alpha_i$ = the ith batch
+  
+  $\beta_j$ = the jth day,
+  
+  $\tau_k$ = the kth ingredient, 
+  
+  $\epsilon_{ijk}$ = random error of the ith batch, on the jth day, of the kth ingredient 
+
+  The assumptions made for the above model are:
+  
+  $\sum{\alpha_i} = 0$
+  
+  $\sum{\beta_j} = 0$
+  
+  $\sum{\tau_k} = 0$
+  
+  $\epsilon_{ijk}$ ~ N(0,$\sigma^2$) 
+  
+####c) Estimation of parameters:
+
+  Looking at the output of the code below:
+  
+  $\hat{\mu}$ = 5.88
+  
+  $\hat{\alpha}_1$ = 0.72,  $\hat{\alpha}_2$ = -0.28
+  
+  $\hat{\alpha}_3$ = -0.48, $\hat{\alpha}_4$ = -0.88
+  
+  $\hat{\alpha}_5$ = 0.92,  $\hat{\beta}_1$ = -0.68
+  
+  $\hat{\beta}_2$ = 0.32,   $\hat{\beta}_3$ = -0.08
+  
+  $\hat{\beta}_4$ = 1.32,   $\hat{\beta}_5$ = -0.88
+  
+  $\hat{\tau}_1$ = 2.52,    $\hat{\tau}_2$ = -0.28
+  
+  $\hat{\tau}_3$ = 2.92,    $\hat{\tau}_4$ = -2.48
+  
+  $\hat{\tau}_5$ = -2.68
+  
+  $\hat{\sigma^2} = MSE = 3.1$
+
+```{r}
+library(dplyr)
+Day <- factor(kronecker(c(1:5), c(rep(1,5))))
+Batch <- factor(rep(c(1:5),5))
+Ingredient <- c("A","B","D","C","E", "C","E","A","D","B","B","A","C","E","D", "D","C","E","B","A","E","D","B","A","C")
+Reaction.Time <- c(8,7,1,7,3,11,2,7,3,8,4,9,10,1,5,6,8,6,6,10,4,2,3,8,8)
+ingredient.data <- data.frame(Day, Batch, Ingredient, Reaction.Time)
+batch.mean <- ingredient.data %>%
+        group_by(Batch) %>%
+        summarise(mean_batch = mean(Reaction.Time))
+day.mean <- ingredient.data %>%
+        group_by(Day) %>%
+        summarise(mean_day = mean(Reaction.Time))
+ingredient.mean <- ingredient.data %>%
+        group_by(Ingredient) %>%
+        summarise(mean_ingredient = mean(Reaction.Time))
+(u.hat = mean(ingredient.data$Reaction.Time))
+ybar1 = batch.mean$mean_batch[1]
+ybar2 = batch.mean$mean_batch[2]
+ybar3 = batch.mean$mean_batch[3]
+ybar4 = batch.mean$mean_batch[4]
+ybar5 = batch.mean$mean_batch[5]
+(alpha1.hat = ybar1 - u.hat)
+(alpha2.hat = ybar2 - u.hat)
+(alpha3.hat = ybar3 - u.hat)
+(alpha4.hat = ybar4 - u.hat)
+(alpha5.hat = ybar5 - u.hat)
+ybar1 = day.mean$mean_day[1]
+ybar2 = day.mean$mean_day[2]
+ybar3 = day.mean$mean_day[3]
+ybar4 = day.mean$mean_day[4]
+ybar5 = day.mean$mean_day[5]
+(beta1.hat = ybar1 - u.hat)
+(beta2.hat = ybar2 - u.hat)
+(beta3.hat = ybar3 - u.hat)
+(beta4.hat = ybar4 - u.hat)
+(beta5.hat = ybar5 - u.hat)
+ybar1 = ingredient.mean$mean_ingredient[1]
+ybar2 = ingredient.mean$mean_ingredient[2]
+ybar3 = ingredient.mean$mean_ingredient[3]
+ybar4 = ingredient.mean$mean_ingredient[4]
+ybar5 = ingredient.mean$mean_ingredient[5]
+(tau1.hat = ybar1 - u.hat)
+(tau2.hat = ybar2 - u.hat)
+(tau3.hat = ybar3 - u.hat)
+(tau4.hat = ybar4 - u.hat)
+(tau5.hat = ybar5 - u.hat)
+
+```
+
+####d) ANOVA table:
+
+```{r}
+reaction_lm <- lm(Reaction.Time~., data = ingredient.data)
+anova(reaction_lm)
+```
+
+
+
+
+
+  
+## (e) Testing if there is any significant treatment effect, day effect or batch effect.  
+
+ $H_0$ : $\alpha_1 = \alpha_2 = \alpha_3 = \alpha_4 = \alpha_5$, 
+ $\beta_1 = \beta_2 = \beta_3 =\beta_4 = \beta_5$, 
+ $\tau_1 = \tau_2 = \tau_3 = \tau_4 = \tau_5$
+  
+ $H_A$ : At least one $\alpha_i \neq \alpha_{i'}$, 
+ At least one $\beta_j \neq \beta_{j'}$, 
+ At least one $\tau_k \neq \tau_{k'}$
+  
+From examining the ANOVA table above we can see that the day and batch have large p-values meaning that we fail to reject $H_0$ and fail to conclude that any of the days or batches have significantly different effects. The p-value obtained for the ingredients is very small so we are able to reject $H_0$ and conclude that at least one of the ingredients has a significantly different effect when compared to the others.
+
+####2) Memory Experiment:
+```{r}
+
+mem_data <- read.table("memory.txt", sep = "", header = TRUE)
+mem_data
+
+
+```
+
+
+
+####a) Checking model assumptions:
+
+
+```{r}
+
+
+mem.aov <- aov(y~factor(wordtype) * factor(distract) ,data=mem_data)
+
+
+plot(mem.aov$fitted.values, mem_data$z, xlab="Fitted Values",ylab = "Residuals", xlim = c(0,20), ylim = c(-2.5,2.5))
+
+hist(mem.aov$residuals)
+
+qqnorm(mem_data$z)
+qqline(mem_data$z)
+```
+
+From the histogram and qqplot the data looks normal but when examining the residuals vs. fitted values it appears we that the equal variance assumption is not met.
+
+####b) Carry out the appropriate transformation:
+
+```{r}
+yij <-tapply(mem_data$y,mem_data$z,mean)
+sij <-tapply(mem_data$y, mem_data$z, var)
+
+plot(log(yij), log(sij))
+lin <-lm(log(sij)~log(yij))
+lin
+
+abline(a=lin$coefficients[1],b=lin$coefficients[2])
+
+q <- lin$coefficients[2]
+
+
+dis.new <- (mem_data$y)^(1-q/2)
+aov.new <-aov(dis.new~mem_data$z)
+plot(aov.new$fitted.values,aov.new$residuals,xlab="Fitted Values",ylab = "Residuals")
+
+hist(aov.new$residuals)
+```
+
+To fix the issue with the equal variance assumption from earlier we performed a variance stabilizing transformation on the data. I first found the means and variances for each treatment group. I then transformed the value of y by a factor of 1 minus q/2 to stabilize the variance. 
+
+####c) Analysis using the transformed data: 
+
+Stating the model:
+
+ $Y_{ijk} = \mu + \tau_i + \beta_j + (\tau\beta)_{ij} + \epsilon_{ijk}$
+ 
+ where $i = 1, 2, 3$; $j = 1, 2, 3$; $k = 1,2, 3....27$
+ 
+ and $Y_{ijk}$ = # of words remembered for a given treatment combination
+
+$\mu$ = grand mean
+$\tau_i$ = ith level of the word type
+$\beta_j$ = jth level of the distraction type
+$(\tau\beta)_{ij}$ = the interaction effect from the combination of the 2 factors
+$\epsilon_{ijk}$ = the random error which follows N(0, $\sigma^2$)
+
+Null Hypothesis for interaction: 
+$(\tau\beta)_{ij} = (\tau\beta)_{i'j'} = .... = 0$
+Alternative Hypothesis for interaction: 
+At least one $(\tau\beta)_{ij} \neq 0$
+
+Decision Rule for interaction: reject the null hypothesis if $F_{obs} > F_{\alpha = .05, (a-1)(b-1),ab(n-1)}= 2.93$
+
+Null Hypothesis for main effects: 
+
+$\tau_i = \tau_{i'} = .... 0$
+$\beta_j = \beta_{j'} = .... 0$
+
+Alternative Hypothesis for main effects:
+at least one $\tau_i \neq 0$
+at least one $\beta_j \neq 0$
+
+Decision rule for main effects: reject the null hypothesis if $F_{obs} > F_{\alpha = .05, (a-1),ab(n-1)}= 3.55$
+
+ANOVA table:
+```{r}
+mem_data$y = dis.new
+mem_data$wordtype <- factor(mem_data$wordtype)
+mem_data$distract <- factor(mem_data$distract)
+
+mem_fit <- aov(y~wordtype + distract + wordtype*distract, data = mem_data)
+summary(mem_fit)
+
+```
+
+
+
+Our F-statistic for the interaction term is .861 which is less than the critical value 2.93 so we fail to reject the null hypothesis and conclude that there is no evidence to suggest that the interaction is significant. For both of the main effects in our model we reject the null since both 13.637 and 6.442 are larger than the critical value 3.55 and we conclude that at least one of each main effect is not equal to zero.
+
+
+Interaction Plot:
+
+```{r}
+interaction.plot(mem_data$distract , mem_data$wordtype, mem_data$y, xlab = "Distraction type", ylab = "Response", trace.label = "Word Type")
+```
+
+From the interaction plot we see that the lines are not parallel and probably would cross at some point; it makes sense that our lines do not cross since our F-test already determined that the interaction was not significant. 
+
+
+####d) Pairwise comparisons:
+For word type:
+want to check $\tau_1 = \tau_2, \tau_1 = \tau_3, \tau_2 = \tau_3$
+
+```{r}
+#check which interval is better
+cat("bonferroni", w.b <- qt(p = (.05/6), df = (27-3), lower.tail = FALSE))
+
+cat("scheffe", w.s <- sqrt((3-1)*qf(p = .05, df1 = (3-1), df2 = (27-3), lower.tail = FALSE)))
+
+```
+The Bonferroni interval is smaller so we choose to use the Bonferroni method for our comparison.
+
+Confidence intervals:
+```{r}
+library(dplyr)
+(word_mean <- mem_data %>%
+   group_by(wordtype)%>%
+   summarize(mean_word = mean(y)))
+```
+type 1 vs type 2:
+```{r}
+c((0.6616866 -0.6838290 )- w.b*sqrt(2*0.000453)/9) 
+
+c((0.6616866 -0.6838290 )+ w.b*sqrt(2*0.000453)/9)
+```
+CI for difference between word types 1 and 2: (-0.03075, -0.01354)
+
+type 1 vs type 3:
+```{r}
+c((0.6616866 -0.7138693 )- w.b*sqrt(2*0.000453)/9) 
+
+c((0.6616866 -0.7138693 )+ w.b*sqrt(2*0.000453)/9)
+```
+CI for difference between word types 1 and 3: (-0.06079, -0.04358)
+
+type 2 vs type 3:
+
+```{r}
+cat(c((0.6838290 -0.7138693 )- w.b*sqrt(2*0.000453)/9)) 
+
+cat(c((0.6838290 -0.7138693 )+ w.b*sqrt(2*0.000453)/9))
+```
+CI for difference between word types 1 and 3: (-0.03865, -0.02143)
+
+From the Bonferroni intervals above there appears to be a significant difference between all 3 different word types. 
+
+For distraction type:
+
+Want to check:
+$\beta_1 = \beta_2$
+$\beta_1 = \beta_3$
+$\beta_2 = \beta_3$
+
+
+Using Bonferroni comparison:
+
+```{r}
+(distract.mean <- mem_data %>%
+   group_by(distract) %>%
+   summarize(mean_distract = mean(y)))
+```
+
+Distraction type 1 vs type 2:
+```{r}
+c((0.6660-0.6933) - w.b*sqrt(2*0.000453)/9)
+c((0.6660-0.6933) + w.b*sqrt(2*0.000453)/9)
+```
+
+CI for difference between distraction types 1 and 2: (-0.03591, -0.01869)
+
+Distraction type 1 vs type 3:
+
+```{r}
+c((0.6660-0.7001) - w.b*sqrt(2*0.000453)/9)
+c((0.6660-0.7001) + w.b*sqrt(2*0.000453)/9)
+```
+CI for difference between distraction types 1 and 3: (-0.04271, -0.02549)
+
+Distraction type 2 vs type 3:
+
+```{r}
+c((0.6933-0.7001) - w.b*sqrt(2*0.000453)/9)
+c((0.6933-0.7001) + w.b*sqrt(2*0.000453)/9)
+```
+CI for difference between distraction types 2 and 3: (-0.01541, 0.001807)
+
+From the pairwise comparisons of the distraction types we find that distraction type 1 is more impactful that the other two distraction types. We find that there is no significant difference between distraction types 2 and 3.
+
+####e) Finding fitted values of original response Y, plotting them against fitted values from first model:
+
+```{r}
+mem_data <- read.table("memory.txt", sep = "", header = TRUE)
+plot(dis.new, mem_data$y, xlab = "Transformed Values", ylab = "Original Values")
+```
+
+From the plot of the original values against the transformed values we see that the original values become much smaller when transformed and that the distance between observations in the transformed data is greatly reduced. The relationship looks close to being linear.
+
+
+###3) Aircraft engines:
+
+####a) Construct a sign table:
+
+```{r}
+signtab = read.csv("sign.csv")
+colnames(signtab)[2]="(1)"
+signtab
+```
+
+####b) Find the factor effects, main effects and full ANOVA:  
+
+
+Factor and main effects:
+
+```{r}
+one = 7.037+6.376
+a = 14.707+15.219
+b = 11.635+12.089
+ab = 17.273+17.815
+c = 10.403+10.151
+ac = 4.368+4.098
+bc = 9.36+9.253
+abc = 13.44+12.923
+d = 8.561+8.951
+ad = 16.867+17.052
+bd = 13.876+13.658
+abd = 19.824+19.639
+cd = 11.846+12.337
+acd = 6.125+5.904
+bcd = 11.190+10.935
+abcd = 15.653+15.053
+A.factor = abcd-bcd+acd+abd+abc-cd-bd-bc+ad+ac+ab-d-c-b+a-one
+B.factor = abcd+bcd-acd+abd+abc-cd+bd+bc-ad-ac+ab-d-c+b-a-one
+C.factor = abcd+bcd+acd-abd+abc+cd-bd+bc-ad+ac-ab-d+c-b-a-one
+D.factor = abcd+bcd+acd+abd-abc+cd+bd-bc+ad-ac-ab+d-c-b-a-one
+AB.factor = abcd-bcd-acd+abd+abc+cd-bd-bc-ad-ac+ab+d+c-b-a+one
+AC.factor = abcd-bcd+acd-abd+abc-cd+bd-bc-ad+ac-ab+d-c+b-a+one
+AD.factor = abcd-bcd+acd+abd-abc-cd-bd+bc+ad-ac-ab-d+c+b-a+one
+BC.factor = abcd+bcd-acd-abd+abc-cd-bd+bc+ad-ac-ab+d-c-b+a+one
+BD.factor = abcd+bcd-acd+abd-abc-cd+bd-bc-ad+ac-ab-d+c-b+a+one
+CD.factor = abcd+bcd+acd-abd-abc+cd-bd-bc-ad-ac+ab-d-c+b+a+one
+ABC.factor = abcd-bcd-acd-abd+abc+cd+bd-bc+ad-ac-ab-d+c+b+a-one
+ABD.factor = abcd-bcd-acd+abd-abc+cd-bd+bc-ad+ac-ab+d-c+b+a-one
+ACD.factor = abcd-bcd+acd-abd-abc-cd+bd+bc-ad-ac+ab+d+c-b+a-one
+BCD.factor = abcd+bcd-acd-abd-abc-cd-bd-bc+ad+ac+ab+d+c+b-a-one
+ABCD.factor = abcd-bcd-acd-abd-abc+cd+bd+bc+ad+ac+ab-d-c-b-a+one
+A.main = A.factor/16
+B.main = B.factor/16
+C.main = C.factor/16
+D.main = D.factor/16
+AB.main = AB.factor/16
+AC.main = AC.factor/16
+AD.main = AD.factor/16
+BC.main = BC.factor/16
+BD.main = BD.factor/16
+CD.main = CD.factor/16
+ABC.main = ABC.factor/16
+ABD.main = ABD.factor/16
+ACD.main = ACD.factor/16
+BCD.main = BCD.factor/16
+ABCD.main = ABCD.factor/16
+table <- matrix(c(A.factor, B.factor, C.factor, D.factor, AB.factor, AC.factor, AD.factor, BC.factor, BD.factor, CD.factor, ABC.factor, ABD.factor, ACD.factor,
+BCD.factor, ABCD.factor,A.main,B.main, C.main, D.main, AB.main, AC.main, AD.main, BC.main, BD.main, CD.main, ABC.main, ABD.main, ACD.main, BCD.main, ABCD.main),ncol=2)
+colnames(table) <- c("[X]","X")
+rownames(table) <- signtab$X
+table <- as.table(table)
+table
+```
+
+ANOVA:
+
+```{r}
+R1 = 7.037 + 14.707 + 11.635 + 17.273 + 10.403 + 4.368 + 9.36 + 13.44 + 8.561 + 16.867 + 13.876 + 19.824 + 11.846 + 6.125 + 11.19 + 15.653
+R2 = 6.376 + 15.219 + 12.089 + 17.815 + 10.151 + 4.098 + 9.253 + 12.923 + 8.951 + 17.052 + 13.658 + 19.639 + 12.337 + 5.904 + 10.935 + 15.053
+SSrep = ((R1^2)/(2^4) + (R2^2)/(2^4)) - (((R1+R2)^2)/((2^4)*2))
+SSA = (A.factor^2)/((2^4)*2)
+SSB = (B.factor^2)/((2^4)*2)
+SSC = (C.factor^2)/((2^4)*2)
+SSD = (D.factor^2)/((2^4)*2)
+SSAB = (AB.factor^2)/((2^4)*2)
+SSAC = (AC.factor^2)/((2^4)*2)
+SSAD = (AD.factor^2)/((2^4)*2)
+SSBC = (BC.factor^2)/((2^4)*2)
+SSBD = (BD.factor^2)/((2^4)*2)
+SSCD = (CD.factor^2)/((2^4)*2)
+SSABC = (ABC.factor^2)/((2^4)*2)
+SSABD = (ABD.factor^2)/((2^4)*2)
+SSACD = (ACD.factor^2)/((2^4)*2)
+SSBCD = (BCD.factor^2)/((2^4)*2)
+SSABCD = (ABCD.factor^2)/((2^4)*2)
+SST = ((7.037^2) + (14.707^2) + (11.635^2) + (17.273^2) + (10.403^2) + (4.368^2) + (9.36^2) + (13.44^2) + (8.561^2) + (16.867^2) + (13.876^2) + (19.824^2) + (11.846^2) + (6.125^2) + (11.19^2) + (15.653^2) + (6.376^2) + (15.219^2) + (12.089^2) + (17.815^2) + (10.151^2) + (4.098^2) + (9.253^2) + (12.923^2) + (8.951^2) + (17.052^2) + (13.658^2) + (19.639^2) + (12.337^2) + (5.904^2) + (10.935^2) + (15.053^2)) - (((R1+R2)^2)/((2^4)*2))
+SSE = SST - SSrep - SSA - SSB - SSC - SSD - SSAB - SSAC - SSAD - SSBC - SSBD - SSCD - SSABC - SSABD - SSACD - SSBCD - SSABCD
+MSE = (SSE/(((2^4)-1)*(2-1)))
+pA = pf((SSA/MSE), 1, 15, lower.tail=F)
+pB = pf((SSB/MSE), 1, 15, lower.tail=F)
+pC = pf((SSC/MSE), 1, 15, lower.tail=F)
+pD = pf((SSD/MSE), 1, 15, lower.tail=F)
+pAB = pf((SSAB/MSE), 1, 15, lower.tail=F)
+pAC = pf((SSAC/MSE), 1, 15, lower.tail=F)
+pAD = pf((SSAD/MSE), 1, 15, lower.tail=F)
+pBC = pf((SSBC/MSE), 1, 15, lower.tail=F)
+pBD = pf((SSBD/MSE), 1, 15, lower.tail=F)
+pCD = pf((SSCD/MSE), 1, 15, lower.tail=F)
+pABC = pf((SSABC/MSE), 1, 15, lower.tail=F)
+pABD = pf((SSABD/MSE), 1, 15, lower.tail=F)
+pACD = pf((SSACD/MSE), 1, 15, lower.tail=F)
+pBCD = pf((SSBCD/MSE), 1, 15, lower.tail=F)
+pABCD = pf((SSABCD/MSE), 1, 15, lower.tail=F)
+p.rep =pf((SSrep/MSE), 1, 15, lower.tail=F)
+anov <- matrix(c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,((2^4)-1)*(2-1),(((2^4)*2)-1), SSA, SSB, SSC, SSD, SSrep, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSABC, SSABD, SSACD, SSBCD, SSABCD, SSE, SST, SSA, SSB, SSC, SSD, SSrep, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSABC, SSABD, SSACD, SSBCD, SSABCD, MSE,"-", SSA/MSE, SSB/MSE, SSC/MSE, SSD/MSE, SSrep/MSE, SSAB/MSE, SSAC/MSE, SSBC/MSE, SSAD/MSE, SSBD/MSE, SSCD/MSE, SSABC/MSE, SSABD/MSE, SSACD/MSE, SSBCD/MSE, SSABCD/MSE,"-","-", pA,pB,pC,pD,p.rep,pAB,pAC,pBC,pAD,pBD,pCD,pABC,pABD,pACD,pBCD,pABCD,"-","-"),ncol=5)
+colnames(anov) <- c("df","SS", "MS","F", "p-val")
+rownames(anov) <- c("A", "B", "C", "D", "replicates", "AB", "AC", "BC","AD", "BD", "CD", "ABC", "ABD", "ACD", "BCD", "ABCD", "error", "total")
+anov<- as.table(anov)
+anov
+```
+
+####c) ANOVA table using R command:
+
+```{r}
+treat.combi <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1), D = c(-1,1))
+rep1 <- data.frame(treat.combi, y = c(7.037, 14.707, 11.635, 17.273, 10.403, 4.368, 9.36, 13.44, 8.561, 16.867, 13.876,19.824,11.846,6.125,11.19,15.653))
+rep2 <- data.frame(treat.combi, y = c(6.376, 15.219,12.089,17.815,10.151,4.098,9.253,12.923,8.951,17.052,13.658,19.639,12.337,5.904,10.935,15.053))
+treatment <- rbind(rep1, rep2)
+data.all <- data.frame(treatment,
+                  rep = rep(c(1, 2), each = 16))
+fit = lm(y ~ A*B*C*D + rep, data = data.all)
+anova(fit)
+```
+
+Using the built in ANOVA function from R we obtain roughly the same values, it seems like the R command rounds values for a cleaner appearance. 
+
+
+####d) Which factors appear significant?
+
+Examining the table it appears that factors A, B, C, D, AB, AC, and ABC all have significant effects. The p-values on the ANOVA table support this conclusion as they are all significant below an aplha = .001 level. 
+
+####e) Analyzing residuals:
+
+```{r}
+z.it = NULL
+for (i in 1:length(fit$residuals)){
+  z.it[i] = fit$residuals[i]/(sqrt(1.3)/(31))
+}
+plot(z.it, xlab = "Treatment", ylab = "Standardized Residuals")
+boxplot(z.it)
+hist(z.it, main = "Histogram of Residuals", xlab= "Standardized Residuals")
+qqnorm(z.it)
+qqline(z.it)
+```
+
+
+From the standardized residuals plot it does appear that the constant variance assumption is met but when examing the qq-plot and histogram we observe that the residuals do not appear to be normally distributed. We would likely have to transform the data to fix this issue.
+
+###4) 
+
+####a) Partially confounded design:
+
+```{r}
+confound <- matrix(c("(1),ab,ac,ad,bc,bd,cd,abcd       ","(1),d,ab,ac,bc,abd,acd,bcd        ","a,b,c,d,abc,abd,acd,bcd","a,b,c,ad,bd,cd,abc,abcd"),ncol=2,nrow =2)
+colnames(confound) <- c("Key block","other block")
+rownames(confound) <- c("ABCD", "ABC")
+confound <- as.table(confound)
+confound
+```
+
+
+
+####b) ANOVA table for confounding design using sign table:
+
+```{r}
+B1 = 7.037+17.273+4.368+16.867+9.36+13.876+11.846+15.653
+B2 = 14.707+11.635+10.403+8.561+13.44+19.824+6.125+11.19
+B3 = 6.376+8.951+17.815+4.098+9.253+19.639+5.904+10.935
+B4 = 15.219+12.089+10.151+17.052+13.658+12.337+12.923+15.053
+SSblock = (((B1^2)+(B2^2)+(B3^2)+(B4^2))/8)-(((B1+B2+B3+B4)^2)/(32))
+SSbwr = SSblock - SSrep
+SSabcd = ((15.053-10.935-5.904-19.639-12.923+12.337+13.658+9.253+17.052+4.098+17.815-8.951-10.151-12.089-15.219+6.376)^2)/(2^4)
+SSabc = ((15.653-11.19-6.125-19.824+13.44+11.846+13.876-9.36+16.867-4.368-17.273-8.561+10.403+11.635+14.707-7.037)^2)/(2^4)
+SSE = SST - SSrep - SSbwr - SSA - SSB - SSC - SSD - SSAB - SSAC - SSAD - SSBC - SSBD - SSCD - SSabc - SSABD - SSACD - SSBCD - SSabcd
+MSE = SSE/13
+pabc = pf((SSabc/MSE), 1, 15, lower.tail=F)
+pabcd = pf((SSabcd/MSE), 1, 15, lower.tail=F)
+p.bwr = pf((SSbwr/MSE), 1, 15, lower.tail=F)
+con.anova <- matrix(c(1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,13,(((2^4)*2)-1), SSA, SSB, SSC, SSD, SSrep, SSbwr, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSabc, SSABD, SSACD, SSBCD, SSabcd, SSE, SST, SSA, SSB, SSC, SSD, SSrep, SSbwr, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSabc, SSABD, SSACD, SSBCD, SSabcd, MSE,"-", SSA/MSE, SSB/MSE, SSC/MSE, SSD/MSE,SSrep/MSE, SSbwr/MSE, SSAB/MSE, SSAC/MSE, SSBC/MSE, SSAD/MSE, SSBD/MSE, SSCD/MSE, SSabc/MSE, SSABD/MSE, SSACD/MSE, SSBCD/MSE, SSABCD/MSE,"-","-", pA,  pB, pC, pD, p.rep, p.bwr, pAB, pAC, pBC, pAD, pBD, pCD, pabc, pABD, pACD, pBCD, pabcd, "-","-"),ncol=5)
+colnames(con.anova) <- c("df","SS", "MS","F", "p-val")
+rownames(con.anova) <- c("A", "B", "C", "D","replicates", "Blocks within Replicates", "AB", "AC", "BC","AD", "BD", "CD", "ABC", "ABD", "ACD", "BCD", "ABCD", "error", "total")
+con.anova<- as.table(con.anova)
+con.anova
+```
+
+
+####c) ANOVA table using R funtions:
+
+```{r}
+treat.combi <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1), D = c(-1,1))
+rep1 <- data.frame(treat.combi, y = c(7.037, 14.707, 11.635, 17.273, 10.403, 4.368, 9.36, 13.44, 8.561, 16.867, 13.876,19.824,11.846,6.125,11.19,15.653))
+rep2 <- data.frame(treat.combi, y = c(6.376, 15.219,12.089,17.815,10.151,4.098,9.253,12.923,8.951,17.052,13.658,19.639,12.337,5.904,10.935,15.053))
+treatment <- rbind(rep1, rep2)
+data.con <- data.frame(treatment,
+                  rep = rep(c(1, 2), each = 16),
+                  block = c(1,2,2,1,2,1,1,2,2,1,1,2,1,2,2,1,3,4,4,3,4,3,3,4,3,4,4,3,4,3,3,4))
+con.fit = lm(y ~ A*B*C*D + rep + factor(block), data = data.con)
+anova(con.fit)
+```
+
+The values from our manually computed table and the table from the ANOVA function in R are the same aside from the fact that our manually computed table seems to be more precise; for example for the sum of squares for the replicates the R fucntion tells us 0 and our manually computed table gives us 0.0158420000007027.  
+
+
+

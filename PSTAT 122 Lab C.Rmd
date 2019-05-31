@@ -1,0 +1,216 @@
+---
+title: "PSTAT 122 Lab Assignment C"
+author: "Kelsey Meyer, 5991146, Section: Megan's Wed 4:00 pm"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+ pdf_document: 
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+# set global chunk options: images will be 6x4 inches
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.align='center', fig.width=6, fig.height=4)
+options(digits = 4)
+```
+
+\newpage
+
+
+#1.Jet Turbine Aircraft Engine Data
+
+
+##a) Sign Table
+
+```{r}
+getwd()
+signtab = read.csv("sign.csv")
+colnames(signtab)[2]="(1)"
+signtab
+```
+
+##b) Main Effect, Factor Effect & Manually Computed ANOVA
+
+```{r}
+one = 7.037+6.376
+a = 14.707+15.219
+b = 11.635+12.089
+ab = 17.273+17.815
+c = 10.403+10.151
+ac = 4.368+4.098
+bc = 9.36+9.253
+abc = 13.44+12.923
+d = 8.561+8.951
+ad = 16.867+17.052
+bd = 13.876+13.658
+abd = 19.824+19.639
+cd = 11.846+12.337
+acd = 6.125+5.904
+bcd = 11.190+10.935
+abcd = 15.653+15.053
+A.factor = abcd-bcd+acd+abd+abc-cd-bd-bc+ad+ac+ab-d-c-b+a-one
+B.factor = abcd+bcd-acd+abd+abc-cd+bd+bc-ad-ac+ab-d-c+b-a-one
+C.factor = abcd+bcd+acd-abd+abc+cd-bd+bc-ad+ac-ab-d+c-b-a-one
+D.factor = abcd+bcd+acd+abd-abc+cd+bd-bc+ad-ac-ab+d-c-b-a-one
+AB.factor = abcd-bcd-acd+abd+abc+cd-bd-bc-ad-ac+ab+d+c-b-a+one
+AC.factor = abcd-bcd+acd-abd+abc-cd+bd-bc-ad+ac-ab+d-c+b-a+one
+AD.factor = abcd-bcd+acd+abd-abc-cd-bd+bc+ad-ac-ab-d+c+b-a+one
+BC.factor = abcd+bcd-acd-abd+abc-cd-bd+bc+ad-ac-ab+d-c-b+a+one
+BD.factor = abcd+bcd-acd+abd-abc-cd+bd-bc-ad+ac-ab-d+c-b+a+one
+CD.factor = abcd+bcd+acd-abd-abc+cd-bd-bc-ad-ac+ab-d-c+b+a+one
+ABC.factor = abcd-bcd-acd-abd+abc+cd+bd-bc+ad-ac-ab-d+c+b+a-one
+ABD.factor = abcd-bcd-acd+abd-abc+cd-bd+bc-ad+ac-ab+d-c+b+a-one
+ACD.factor = abcd-bcd+acd-abd-abc-cd+bd+bc-ad-ac+ab+d+c-b+a-one
+BCD.factor = abcd+bcd-acd-abd-abc-cd-bd-bc+ad+ac+ab+d+c+b-a-one
+ABCD.factor = abcd-bcd-acd-abd-abc+cd+bd+bc+ad+ac+ab-d-c-b-a+one
+A.main = A.factor/16
+B.main = B.factor/16
+C.main = C.factor/16
+D.main = D.factor/16
+AB.main = AB.factor/16
+AC.main = AC.factor/16
+AD.main = AD.factor/16
+BC.main = BC.factor/16
+BD.main = BD.factor/16
+CD.main = CD.factor/16
+ABC.main = ABC.factor/16
+ABD.main = ABD.factor/16
+ACD.main = ACD.factor/16
+BCD.main = BCD.factor/16
+ABCD.main = ABCD.factor/16
+table <- matrix(c(A.factor, B.factor, C.factor, D.factor, AB.factor, AC.factor, AD.factor, BC.factor, BD.factor, CD.factor, ABC.factor, ABD.factor, ACD.factor,
+BCD.factor, ABCD.factor,A.main,B.main, C.main, D.main, AB.main, AC.main, AD.main, BC.main, BD.main, CD.main, ABC.main, ABD.main, ACD.main, BCD.main, ABCD.main),ncol=2)
+colnames(table) <- c("[X]","X")
+rownames(table) <- signtab$X
+table <- as.table(table)
+table
+```
+
+```{r}
+R1 = 7.037 + 14.707 + 11.635 + 17.273 + 10.403 + 4.368 + 9.36 + 13.44 + 8.561 + 16.867 + 13.876 + 19.824 + 11.846 + 6.125 + 11.19 + 15.653
+R2 = 6.376 + 15.219 + 12.089 + 17.815 + 10.151 + 4.098 + 9.253 + 12.923 + 8.951 + 17.052 + 13.658 + 19.639 + 12.337 + 5.904 + 10.935 + 15.053
+SSrep = ((R1^2)/(2^4) + (R2^2)/(2^4)) - (((R1+R2)^2)/((2^4)*2))
+SSA = (A.factor^2)/((2^4)*2)
+SSB = (B.factor^2)/((2^4)*2)
+SSC = (C.factor^2)/((2^4)*2)
+SSD = (D.factor^2)/((2^4)*2)
+SSAB = (AB.factor^2)/((2^4)*2)
+SSAC = (AC.factor^2)/((2^4)*2)
+SSAD = (AD.factor^2)/((2^4)*2)
+SSBC = (BC.factor^2)/((2^4)*2)
+SSBD = (BD.factor^2)/((2^4)*2)
+SSCD = (CD.factor^2)/((2^4)*2)
+SSABC = (ABC.factor^2)/((2^4)*2)
+SSABD = (ABD.factor^2)/((2^4)*2)
+SSACD = (ACD.factor^2)/((2^4)*2)
+SSBCD = (BCD.factor^2)/((2^4)*2)
+SSABCD = (ABCD.factor^2)/((2^4)*2)
+SST = ((7.037^2) + (14.707^2) + (11.635^2) + (17.273^2) + (10.403^2) + (4.368^2) + (9.36^2) + (13.44^2) + (8.561^2) + (16.867^2) + (13.876^2) + (19.824^2) + (11.846^2) + (6.125^2) + (11.19^2) + (15.653^2) + (6.376^2) + (15.219^2) + (12.089^2) + (17.815^2) + (10.151^2) + (4.098^2) + (9.253^2) + (12.923^2) + (8.951^2) + (17.052^2) + (13.658^2) + (19.639^2) + (12.337^2) + (5.904^2) + (10.935^2) + (15.053^2)) - (((R1+R2)^2)/((2^4)*2))
+SSE = SST - SSrep - SSA - SSB - SSC - SSD - SSAB - SSAC - SSAD - SSBC - SSBD - SSCD - SSABC - SSABD - SSACD - SSBCD - SSABCD
+MSE = (SSE/(((2^4)-1)*(2-1)))
+pA = pf((SSA/MSE), 1, 15, lower.tail=F)
+pB = pf((SSB/MSE), 1, 15, lower.tail=F)
+pC = pf((SSC/MSE), 1, 15, lower.tail=F)
+pD = pf((SSD/MSE), 1, 15, lower.tail=F)
+pAB = pf((SSAB/MSE), 1, 15, lower.tail=F)
+pAC = pf((SSAC/MSE), 1, 15, lower.tail=F)
+pAD = pf((SSAD/MSE), 1, 15, lower.tail=F)
+pBC = pf((SSBC/MSE), 1, 15, lower.tail=F)
+pBD = pf((SSBD/MSE), 1, 15, lower.tail=F)
+pCD = pf((SSCD/MSE), 1, 15, lower.tail=F)
+pABC = pf((SSABC/MSE), 1, 15, lower.tail=F)
+pABD = pf((SSABD/MSE), 1, 15, lower.tail=F)
+pACD = pf((SSACD/MSE), 1, 15, lower.tail=F)
+pBCD = pf((SSBCD/MSE), 1, 15, lower.tail=F)
+pABCD = pf((SSABCD/MSE), 1, 15, lower.tail=F)
+p.rep =pf((SSrep/MSE), 1, 15, lower.tail=F)
+anov <- matrix(c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,((2^4)-1)*(2-1),(((2^4)*2)-1), SSA, SSB, SSC, SSD, SSrep, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSABC, SSABD, SSACD, SSBCD, SSABCD, SSE, SST, SSA, SSB, SSC, SSD, SSrep, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSABC, SSABD, SSACD, SSBCD, SSABCD, MSE,"-", SSA/MSE, SSB/MSE, SSC/MSE, SSD/MSE, SSrep/MSE, SSAB/MSE, SSAC/MSE, SSBC/MSE, SSAD/MSE, SSBD/MSE, SSCD/MSE, SSABC/MSE, SSABD/MSE, SSACD/MSE, SSBCD/MSE, SSABCD/MSE,"-","-", pA,pB,pC,pD,p.rep,pAB,pAC,pBC,pAD,pBD,pCD,pABC,pABD,pACD,pBCD,pABCD,"-","-"),ncol=5)
+colnames(anov) <- c("df","SS", "MS","F", "p-val")
+rownames(anov) <- c("A", "B", "C", "D", "replicates", "AB", "AC", "BC","AD", "BD", "CD", "ABC", "ABD", "ACD", "BCD", "ABCD", "error", "total")
+anov<- as.table(anov)
+anov
+```
+
+##c) ANOVA via R
+
+The anova tables are pretty much the same - I included a "total" row and my numbers are not rounded off so the answers are more ]
+exact, but this does not have a signficant impact on the resulting p-value which is what is most important.
+  
+```{r}
+treat.combi <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1), D = c(-1,1))
+rep1 <- data.frame(treat.combi, y = c(7.037, 14.707, 11.635, 17.273, 10.403, 4.368, 9.36, 13.44, 8.561, 16.867, 13.876,19.824,11.846,6.125,11.19,15.653))
+rep2 <- data.frame(treat.combi, y = c(6.376, 15.219,12.089,17.815,10.151,4.098,9.253,12.923,8.951,17.052,13.658,19.639,12.337,5.904,10.935,15.053))
+treatment <- rbind(rep1, rep2)
+data.all <- data.frame(treatment,
+                  rep = rep(c(1, 2), each = 16))
+fit = lm(y ~ A*B*C*D + rep, data = data.all)
+anova(fit)
+```
+
+##d) Analysis
+
+Looking at the table that was constructed, factors A, B, C, D, AB, AC, & ABC all appear to have large total effects. The ANOVA table backs this conclusion up as all of these factors have significant p-values.
+
+##e) Residuals
+
+Looking at the plots of the residuals, we can see from the histogram and the normal q-q plot that the assumption of normality is not satisfied and some manipulation must be done to the data in order to satisfy all assumptions.
+
+```{r}
+z.it = NULL
+for (i in 1:length(fit$residuals)){
+  z.it[i] = fit$residuals[i]/(sqrt(1.3)/(31))
+}
+plot(z.it, xlab = "Treatment", ylab = "Standardized Residuals")
+boxplot(z.it)
+hist(z.it, main = "Histogram of Residuals", xlab= "Standardized Residuals")
+qqnorm(z.it)
+qqline(z.it)
+```
+
+#2. Confounding
+
+## a) Layout
+
+```{r}
+confound <- matrix(c("(1),ab,ac,ad,bc,bd,cd,abcd       ","(1),d,ab,ac,bc,abd,acd,bcd        ","a,b,c,d,abc,abd,acd,bcd","a,b,c,ad,bd,cd,abc,abcd"),ncol=2,nrow =2)
+colnames(confound) <- c("key block","other block")
+rownames(confound) <- c("ABCD", "ABC")
+confound <- as.table(confound)
+confound
+```
+
+## b) Confounding ANOVA
+
+```{r}
+B1 = 7.037+17.273+4.368+16.867+9.36+13.876+11.846+15.653
+B2 = 14.707+11.635+10.403+8.561+13.44+19.824+6.125+11.19
+B3 = 6.376+8.951+17.815+4.098+9.253+19.639+5.904+10.935
+B4 = 15.219+12.089+10.151+17.052+13.658+12.337+12.923+15.053
+SSblock = (((B1^2)+(B2^2)+(B3^2)+(B4^2))/8)-(((B1+B2+B3+B4)^2)/(32))
+SSbwr = SSblock - SSrep
+SSabcd = ((15.053-10.935-5.904-19.639-12.923+12.337+13.658+9.253+17.052+4.098+17.815-8.951-10.151-12.089-15.219+6.376)^2)/(2^4)
+SSabc = ((15.653-11.19-6.125-19.824+13.44+11.846+13.876-9.36+16.867-4.368-17.273-8.561+10.403+11.635+14.707-7.037)^2)/(2^4)
+SSE = SST - SSrep - SSbwr - SSA - SSB - SSC - SSD - SSAB - SSAC - SSAD - SSBC - SSBD - SSCD - SSabc - SSABD - SSACD - SSBCD - SSabcd
+MSE = SSE/13
+pabc = pf((SSabc/MSE), 1, 15, lower.tail=F)
+pabcd = pf((SSabcd/MSE), 1, 15, lower.tail=F)
+p.bwr = pf((SSbwr/MSE), 1, 15, lower.tail=F)
+con.anova <- matrix(c(1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,13,(((2^4)*2)-1), SSA, SSB, SSC, SSD, SSrep, SSbwr, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSabc, SSABD, SSACD, SSBCD, SSabcd, SSE, SST, SSA, SSB, SSC, SSD, SSrep, SSbwr, SSAB, SSAC, SSBC, SSAD, SSBD, SSCD, SSabc, SSABD, SSACD, SSBCD, SSabcd, MSE,"-", SSA/MSE, SSB/MSE, SSC/MSE, SSD/MSE,SSrep/MSE, SSbwr/MSE, SSAB/MSE, SSAC/MSE, SSBC/MSE, SSAD/MSE, SSBD/MSE, SSCD/MSE, SSabc/MSE, SSABD/MSE, SSACD/MSE, SSBCD/MSE, SSABCD/MSE,"-","-", pA,  pB, pC, pD, p.rep, p.bwr, pAB, pAC, pBC, pAD, pBD, pCD, pabc, pABD, pACD, pBCD, pabcd, "-","-"),ncol=5)
+colnames(con.anova) <- c("df","SS", "MS","F", "p-val")
+rownames(con.anova) <- c("A", "B", "C", "D","replicates", "Blocks within Replicates", "AB", "AC", "BC","AD", "BD", "CD", "ABC", "ABD", "ACD", "BCD", "ABCD", "error", "total")
+con.anova<- as.table(con.anova)
+con.anova
+```
+
+```{r}
+treat.combi <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1), D = c(-1,1))
+rep1 <- data.frame(treat.combi, y = c(7.037, 14.707, 11.635, 17.273, 10.403, 4.368, 9.36, 13.44, 8.561, 16.867, 13.876,19.824,11.846,6.125,11.19,15.653))
+rep2 <- data.frame(treat.combi, y = c(6.376, 15.219,12.089,17.815,10.151,4.098,9.253,12.923,8.951,17.052,13.658,19.639,12.337,5.904,10.935,15.053))
+treatment <- rbind(rep1, rep2)
+data.con <- data.frame(treatment,
+                  rep = rep(c(1, 2), each = 16),
+                  block = c(1,2,2,1,2,1,1,2,2,1,1,2,1,2,2,1,3,4,4,3,4,3,3,4,3,4,4,3,4,3,3,4))
+con.fit = lm(y ~ A*B*C*D + rep + factor(block), data = data.con)
+anova(con.fit)
+```
