@@ -1,0 +1,689 @@
+---
+title: "Homework 1"
+author: "Marcus Eriksson, Eddie Bermudez"
+date: "__Due on October 14, 2018 at 11:59 pm__"
+graphics: yes
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo=TRUE, 
+                      cache=FALSE, 
+                      fig.width=5, 
+                      fig.height=5,
+                      fig.align='center')
+indent1 = '    '
+indent2 = paste(rep(indent1, 2), collapse='')
+indent3 = paste(rep(indent1, 3), collapse='')
+r = function(x, digits=2){ round(x, digits=digits) }
+library(tidyverse)
+library(reshape2)
+
+
+```
+
+__Note:__ If you are working with a partner, please submit only one homework per group with both names and whether you are taking the course for graduate credit or not.  Submit your Rmarkdown (.Rmd) and the compiled pdf on Gauchospace.
+ 
+---------------------------------
+
+**Predicting Algae Blooms**
+
+__*Background*__ High concentrations of certain harmful algae in rivers
+constitute a serious ecological problem with a strong impact not only on river
+lifeforms, but also on water quality. Being able to monitor and perform an
+early forecast of algae blooms is essential to improving the quality of rivers.
+
+With the goal of addressing this prediction problem, several water samples were
+collected in different European rivers at different times during a period of
+approximately 1 year. For each water sample, different chemical properties were
+measured as well as the frequency of occurrence of seven harmful algae. Some
+other characteristics of the water collection process were also stored, such as
+the season of the year, the river size, and the river speed.
+
+__*Goal*__ We want to understand how these frequencies are related to certain
+chemical attributes of water samples as well as other characteristics of the
+samples (like season of the year, type of river, etc.)
+    
+__*Data Description*__ The data set consists of data for 200 water samples and
+each observation in the available datasets is in effect an aggregation of
+several water samples collected from the same river over a period of 3 months,
+during the same season of the year. Each observation contains information on 11
+variables. Three of these variables are nominal and describe the season of the
+year when the water samples to be aggregated were collected, as well as the
+size and speed of the river in question. The eight remaining variables are
+values of different chemical parameters measured in the water samples forming
+the aggregation, namely: Maximum pH value, Minimum value of $O_2$ (oxygen),
+Mean value of Cl (chloride), Mean value of $NO_3^-$ (nitrates), Mean value of
+$NH_4^+$ (ammonium), Mean of $PO^{3}_4$ (orthophosphate), Mean of total $PO_4$
+(phosphate) and Mean of chlorophyll.
+
+Associated with each of these parameters are seven frequency numbers of
+different harmful algae found in the respective water samples. No information
+is given regarding the names of the algae that were identified.
+    
+We can start the analysis by loading into R the data from the "algaeBloom.txt"
+file (the training data, i.e. the data that will be used to obtain the
+predictive models). To read the data from the file it is sufficient to issue
+the following command:
+
+```{r load, message=F, warning=F, results="hide"}
+
+algae <- read_table2("algaeBloom.txt", col_names=
+                      c('season','size','speed','mxPH','mnO2','Cl','NO3','NH4',
+                        'oPO4','PO4','Chla','a1','a2','a3','a4','a5','a6','a7'), 
+                      na="XXXXXXX")
+algae
+
+glimpse(algae)
+```
+
+1. __*Descriptive summary statistics*__ Given the lack of further information
+   on the problem domain, it is wise to investigate some of the statistical
+   properties of the data, so as to get a better grasp of the problem. It is
+   always a good idea to start our analysis with some kind of exploratory data
+   analysis. A first idea of the statistical properties of the data can be
+   obtained through a summary of its descriptive statistics. 
+    
+    #a) Count the number of observations in each season using `summarise()` in
+    `dplyr`. 
+```{r}
+library(dplyr)
+algae %>% 
+  group_by(season) %>% 
+  summarise(n = n())
+```
+    
+    
+
+    #b) Are there missing values? Calculate the mean and variance of each
+    chemical (Ignore $a_1$ through $a_7$). What do you notice about the
+    magnitude of the two quantities for different chemicals? 
+```{r}
+library(dplyr)
+#mean & variance of Cl
+summarise(algae, Mean_Cl = mean(Cl, na.rm = T))
+summarise(algae, Variance_Cl = var(Cl, na.rm = T))
+
+#mean & variance of NO3
+summarise(algae, Mean_NO3 = mean(NO3, na.rm = T))
+summarise(algae, Variance_NO3 = var(NO3, na.rm = T))
+
+#mean & variance of NH4
+summarise(algae, Mean_NH4 = mean(NH4, na.rm = T))
+summarise(algae, Variance_NH4 = var(NH4, na.rm = T))
+
+#mean & variance of oPO4 
+summarise(algae, Mean_oPO4 = mean(oPO4, na.rm = T))
+summarise(algae, Variance_oPO4 = var(oPO4, na.rm = T))
+
+#mean & variance of PO4 
+summarise(algae, Mean_PO4 = mean(PO4, na.rm = T))
+summarise(algae, Variance_PO4 = var(PO4, na.rm = T))
+
+#mean & variance of Chla
+summarise(algae, Mean_Chla = mean(Chla, na.rm = T))
+summarise(algae, Variance_Chla = var(Chla, na.rm = T))
+```
+This dataset does contain missing values. By examining the 2 quantities for each chemical we observe that the variance is much larger than the mean. This means that there must be a very large range of values in the dataset.  
+
+
+
+    #c) Mean and Variance is one measure of central tendency and spread of data.
+    Median and Median Absolute Deviation are alternative measures of central
+    tendency and spread. 
+
+        For a univariate data set $X_1, X_2, ..., X_n$, the Median Absolute Deviation (MAD) is defined as the median of the absolute deviations from the data's median: $$\text{MAD}=\text{median} (|X_i-\text{median}(X)|)$$
+
+        Compute median and MAD of each chemical and compare the two sets of quantities (i.e., mean & variance vs. median & MAD). What do you notice? 
+```{r}
+
+
+new_algae <- na.omit(algae) #create a new dataset without missing values
+#new_algae has 184 rows
+#find the median of Cl
+median_CL <- summarise(new_algae, median_Cl = median(Cl, na.rm = T))
+median_CL 
+
+#find the median absolute deviation of Cl, this creates a new column with the MAD
+new_algae %>% select(Cl) %>%
+  mutate(medians = seq(35.08,35.08, length.out = 184)) %>%
+  mutate(abs = abs(Cl-medians)) %>%
+  mutate(mad = median(abs))
+
+
+
+
+
+```
+MAD of Cl: 23.2565        
+
+```{r}
+#for NO3
+#find the median of NO3
+median_NO3 <- summarise(new_algae, median_NO3 = median(NO3, na.rm = T))
+median_NO3 
+
+#find the median absolute deviation of NO3, this creates a new column with the MAD
+new_algae %>% select(NO3) %>%
+  mutate(medians = seq(2.82,2.82, length.out = 184)) %>%
+  mutate(abs = abs(NO3-medians)) %>%
+  mutate(mad = median(abs))
+
+```
+MAD of NO3: 1.5605
+
+```{r}
+#for NH4
+#find the median of NH4
+median_NH4 <- summarise(new_algae, median_NH4 = median(NH4, na.rm = T))
+median_NH4 
+
+#find the median absolute deviation of NH4, this creates a new column with the MAD
+new_algae %>% select(NH4) %>%
+  mutate(medians = seq(115.714,115.714, length.out = 184)) %>%
+  mutate(abs = abs(NH4-medians)) %>%
+  mutate(mad = median(abs))
+```
+MAD of NH4: 81.5475
+
+
+```{r}
+#for oPO4
+#find the median of oPO4
+median_oPO4 <- summarise(new_algae, median_oPO4 = median(oPO4, na.rm = T))
+median_oPO4 
+
+#find the median absolute deviation of NH4, this creates a new column with the MAD
+new_algae %>% select(oPO4) %>%
+  mutate(medians = seq(46.2835,46.2835, length.out = 184)) %>%
+  mutate(abs = abs(oPO4-medians)) %>%
+  mutate(mad = median(abs))
+```
+MAD of oPO4: 31.833
+
+```{r}
+#for PO4
+#find the median of PO4
+median_PO4 <- summarise(new_algae, median_PO4 = median(PO4, na.rm = T))
+median_PO4 
+
+#find the median absolute deviation of NH4, this creates a new column with the MAD
+new_algae %>% select(PO4) %>%
+  mutate(medians = seq(115.6,115.6, length.out = 184)) %>%
+  mutate(abs = abs(PO4-medians)) %>%
+  mutate(mad = median(abs))
+```
+MAD of PO4: 77.55
+
+```{r}
+#for Chla
+#find the median of Chla
+median_Chla <- summarise(new_algae, median_Chla = median(Chla, na.rm = T))
+median_Chla 
+
+#find the median absolute deviation of NH4, this creates a new column with the MAD
+new_algae %>% select(Chla) %>%
+  mutate(medians = seq(5.522,5.522, length.out = 184)) %>%
+  mutate(abs = abs(Chla-medians)) %>%
+  mutate(mad = median(abs))
+```
+MAD of Chla: 4.522
+
+
+2. __*Data visualization*__ Most of the time, the information in the data set is also well captured graphically. Histogram, scatter plot, boxplot, Q-Q plot are frequently used tools for data visualization. Use ggplot for all of these visualizations. 
+    
+    #. Produce a histogram of $mxPH$ with the title 'Histogram of mxPH' based on algae data set. Use an appropriate argument to show the probability instead of the frequency as the vertical axis. (Hint: look at the examples in the help file for function `geom_histogram()`). Is the distribution skewed? 
+    
+    
+```{r}
+library(ggplot2)
+PH_data <- select(algae,mxPH)
+ggplot(algae, aes(mxPH)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)),binwidth = .1) +ggtitle("Histogram of mxPH")+scale_y_continuous(labels = scales::percent)
+
+
+
+
+```
+The distribution of mxPH is pretty normal, perhaps with a slight left skew.    
+        
+    #. Add a density curve using `geom_density()` and rug plots using `geom_rug()` to above histogram. 
+```{r}
+#adding a density curve:
+ggplot(algae, aes(mxPH)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)),binwidth = .1) +ggtitle("Histogram of mxPH")+scale_y_continuous(labels = scales::percent)+geom_density()+geom_rug()
+
+
+
+
+```
+  
+  
+  
+  
+    #. Create a boxplot with the title 'A conditioned Boxplot of Algal $a_1$' for $a_1$ grouped by $size$. (Refer to help page for `geom_boxplot()`).
+    
+```{r}
+#?geom_boxplot()
+
+BP_a1 <- ggplot(algae, aes(size, a1))
+BP_a1 + geom_boxplot() +ggtitle("A conditioned Boxplot of Algal a1")
+```
+    
+  
+    #. Are there any outliers for $NO3$ and $NH4$? How many observations would you consider as outliers? How did you arrive at this conclusion? 
+    
+```{r}
+#graph by size for clarity
+BP_NH4 <- ggplot(algae, aes(size, NH4))
+BP_NH4 + geom_boxplot() +ggtitle("Box Plot of NH4 by size")
+
+BP_NO3 <- ggplot(algae, aes(size, NO3))
+BP_NO3 + geom_boxplot() +ggtitle("Box plot of NO3 by size")
+```
+    For NO3 we only have 4 outliers. For NH4 we would consider about 20 observations to be outliers. We drew this conclusion by examining the box plots for these variables and checking for values outside of the intervals.
+
+    #. Compare mean & variance vs. median & MAD for $NO3$ and $NH4$. What do you notice? Can you conclude which set of measures is more robust when outliers are present? 
+  
+
+Mean & Variance vs. Median & Median Absolute Deviation
+NO3: mean = 3.282 , var = 14.26 ; median = 2.82 , MAD = 1.5605
+NH4: mean = 501.29 , var = 3851585 ; median = 115.714 , MAD = 81.5475 
+
+When comparing the mean and variance against the median and median absolute deviation we see that the value of the median and median absolute variation are much closer to each other than the mean and standard deviations of these two chemicals. Therefore it apears that the combination of median and the median absolute variance is the more robust measurement when dealing with outliers.  
+        
+----------------------------------------------
+    
+**Predicting Algae Blooms**
+
+Some water samples contained unknown values in
+several chemicals. Missing data are very common in real-world problems, and
+may prevent the use of certain data mining techniques that are not able to
+handle missing values. 
+
+In this homework, we are going to introduce various ways to deal with missing
+values. After all the missing values have been taken care of, we will build a
+model to investigate the relationship between the variable `a1` and other 11
+predictors (`season`, `size`, `speed`, `mxPH`, `mnO2`, `Cl`, `NO3`, `NH4`,
+`oPO4`, `PO4`, `Chla`) utilizing cross-validation in the next
+problem.
+
+**_Dealing with missing values_**
+
+3.     
+    #. How many observations contain missing values? How many missing values
+    are there in each variable? 
+```{r}
+sum(is.na(algae))
+sum(is.na(algae$season))
+sum(is.na(algae$size))
+sum(is.na(algae$speed))
+sum(is.na(algae$mxPH))
+sum(is.na(algae$mnO2))
+sum(is.na(algae$Cl))
+sum(is.na(algae$NO3))
+sum(is.na(algae$NH4))
+sum(is.na(algae$oPO4))
+sum(is.na(algae$PO4))
+sum(is.na(algae$Chla))
+sum(is.na(algae$a1))
+sum(is.na(algae$a2))
+sum(is.na(algae$a3))
+sum(is.na(algae$a4))
+sum(is.na(algae$a5))
+sum(is.na(algae$a6))
+sum(is.na(algae$a7))
+
+```
+33 observations contain missing values. 
+By variable:
+The following have no missing values: season, size, speed and a1 - a7
+mxPH has 1 missing value. 
+mnO2, NO3, NH4, oPO4, PO4 all  have 2 missing values.
+Cl has 10 missing values.
+Chla has 12 missing values.
+
+
+
+    #. **Removing observations with missing values**: use `filter()` function
+    in `dplyr` package to observations with any missing value, and save the
+    resulting dataset (without missing values) as `algae.del`. Report how many
+    observations are in `algae.del`.
+    
+        Hint: `complete.cases()` may be useful.
+
+```{r}
+
+library(dplyr)
+
+algae %>% 
+  select(season, size, speed, mxPH, mnO2, Cl, NO3, NH4, oPO4, PO4, Cl, Chla, a1, a2, a3, a4, a5, a6, a7) %>%
+  filter(complete.cases(mxPH), complete.cases(mnO2), complete.cases(NO3), complete.cases(NH4), complete.cases(oPO4), complete.cases(PO4), complete.cases(Cl), complete.cases(Chla))  
+
+
+algae.del <- algae %>% 
+  select(season, size, speed, mxPH, mnO2, Cl, NO3, NH4, oPO4, PO4, Cl, Chla, a1, a2, a3, a4, a5, a6, a7) %>%
+  filter(complete.cases(mxPH), complete.cases(mnO2), complete.cases(NO3), complete.cases(NH4), complete.cases(oPO4), complete.cases(PO4), complete.cases(Cl), complete.cases(Chla)) 
+
+
+algae.del
+```
+There are 184 observations in algae.del. 
+
+
+
+    #. \label{imputation} **Imputing unknowns with measures of central
+    tendency**: the simplest and fastest way of filling in (imputing) missing
+    values is to use some measures of central tendency such as mean, median and
+    mode.
+        
+        Use `mutate_at()` and `ifelse()` in `dplyr` to fill in missing values
+        for each chemical with its median, and save the imputed dataset as
+        `algae.med`. Report the number of observations in `algae.med`.  Display
+        the values of each chemical for the $48^{th}$, $62^{th}$ and $199^{th}$
+        obsevation in `algae.med`. 
+
+
+
+        This simple strategy, although extremely fast and thus appealing for
+        large datasets, imputed values may have large bias that can influence
+        our model fitting. An alternative for decreasing bias of imputed values
+        is to use relationships between variables.
+```{r}
+#algae
+algae %>% 
+  mutate_at(., .vars=vars(4:11), .funs=funs(ifelse(is.na(.), median(., na.rm = TRUE),.)))
+
+algae.med = algae %>% 
+  mutate_at(., .vars=vars(4:11), .funs=funs(ifelse(is.na(.), median(., na.rm = TRUE),.)))
+
+
+#algae.med %>%
+  #select(4:11) %>%
+print(algae.med[48,]) #print 48th row
+print(algae.med[62,]) #print 62nd row
+print(algae.med[199,]) #print 199th row
+```
+      There are 200 observations in the dataset algae.med. 
+      
+    #. **Imputing unknowns using correlations**: another way to impute missing
+    values is to use correlation with another variable. For a highly
+    correlated pair of variables, we can fill in the unknown values by
+    predicting one based on the other with a simple linear regression model,
+    provided the two variables are not both unknown. 
+    
+        Compute pairwise correlation between the continuous (chemical) variables. 
+
+
+
+        Then, fill in the missing value for `PO4` based on `oPO4` in the
+        $28^{th}$ observation. What is the value you obtain? 
+        
+        Hint: use `lm()` and `predict()` function.
+        
+```{r}
+po4.lm <- lm(PO4 ~ oPO4, algae.med)
+predict(po4.lm)
+```
+
+The value we obtain from the linear model is 48.04407 for the 28th observation of PO4.
+
+    #. **Questioning missing data assumptions**:  When might imputation using only the observed data lead you to incorrect conclusions?  In a couple of sentences, describe a scenario in which the imputed values of the chemical abundances in the algae data  (imputed using either the median or correlation method) might be a poor substitute for the true missing values.  Hint: look at the example from lecture 2.  
+
+Only using observed data to draw conclusions can be misleading such as with the example in class with the airplane study where they were investigating which parts of the plane to reinforce. Based on the collected data you incorrectly draw the conclusion that the fuselage should be reinforced when logically it should be the engines. This phenomenon is called survivorship bias. For the algae data it is also possible that we experience survivorship bias from the absence of algae containing too much or too little of certain chemicals. 
+
+**_Estimating the Test Error with Cross Validation (CV)_**
+    
+Using `algae.med` dataset obtained in \eqref{imputation}, we will build a linear regression model
+to predict the levels of algae type `a1` based on 11 variables (`season`, `size`, `speed`, `mxPH`,
+`mnO2`, `Cl`, `NO3`, `NH4`, `oPO4`, `PO4`, `Chla`), and test generalization of
+model to data that have not been used for training.
+
+
+4. **Cross-validation**: in class we talked about how to use cross-validation (CV) to estimate the "test error". In $k$-fold CV, each of $k$ equally sized random˜ partitions of data (chunks) are used in a heldout set (called validation set or test set). After $k$ runs, we average the held-out error as our final estimate of the validation error.  For this part, we will run cross-validation on only a single model, as a way to estimate our test error for future predictions (we are not using it here for model selection since we are considering only one model).  Perform 5-fold cross-validation on this model to estimate the (average) test error.
+    
+    #. \label{chunkids} First randomly partition data into 5 equal sized
+    chunks. 
+
+        Hint: a simple way to randomly assign each observation to a chunk is to
+        do the following. First, use `cut(..., label=FALSE)` to divide
+        observation ids (1, 2, \dots ) into equal numbers of chunk ids. Then,
+        randomize output of `cut()`by using `sample()`.
+       
+```{r}
+#?cut
+chunks <- cut((1:nrow(algae.med)), breaks = 5, label = FALSE) %>%
+  sample
+set.seed(2)
+chunks
+```
+
+
+    #. Perform 5-fold cross-validation with training error and validation
+    errors of each chunk determined from \eqref{chunkids}. 
+
+        Since same computation is repeated 5 times, we can define the following
+        function for simplicity.
+
+```{r cvtemplate,indent=indent2}
+do.chunk <- function(chunkid, chunkdef, dat){  # function argument
+  
+    train = (chunkdef != chunkid)
+
+    Xtr = dat[train,1:11]  # get training set
+    Ytr = dat[train,12]  # get true response values in training set
+    
+    Xvl = dat[!train,1:11]  # get validation set
+    Yvl = dat[!train,12]  # get true response values in validation set
+
+    lm.a1 <- lm(a1~., data = dat[train,1:12])
+    predYtr = predict(lm.a1)  # predict training values
+    predYvl = predict(lm.a1,Xvl)  # predict validation values
+   
+
+    data.frame(fold = chunkid,
+               train.error = mean(unlist((predYtr - Ytr)^2)), # compute and store training error
+               val.error = mean(unlist((predYvl - Yvl)^2)))   # compute and store test error
+
+}
+
+
+```
+        
+        First argument `chunkid` indicates which chunk to use as validation set
+        (one of 1:5). Second argument `chunkdef` is chunk assignments from
+        \eqref{chunkids}. Third argument `dat` will be `algae.med` dataset.
+        
+        In order to repeatedly call `do.chunk()` for each value of `chunkid`,
+        use functions `lapply()` or `ldply()`. Note that `chunkdef` and `dat`
+        should be passed in as optional arguments (refer to help pages).
+
+        Write the code and print out the `train.error` and `val.error` five times (e.g. for each chunk).
+
+```{r}
+lapply( 1:5, do.chunk, chunkdef = chunks, dat = algae.med)
+```
+
+        
+5. **Test error on additional data**: now imagine that you actually get _new_ data that wasn't available when you first fit the model.
+
+    #. Additional data can be found in the file `algaeTest.txt`.
+
+```{r real,indent=indent2,message=F,warning=F}
+algae.Test <- read_table2('algaeTest.txt',
+                    col_names=c('season','size','speed','mxPH','mnO2','Cl','NO3',
+                                'NH4','oPO4','PO4','Chla','a1'),
+                    na=c('XXXXXXX'))
+
+lm.a1 <- lm(a1~., data = algae.Test)
+lm.a1
+#MSE
+mean((algae.Test$mxPH - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$mnO2 - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$Cl - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$NO3 - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$NH4 - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$oPO4 - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$PO4 - predict.lm(lm.a1, algae.Test)) ^ 2)
+
+mean((algae.Test$Chla - predict.lm(lm.a1, algae.Test)) ^ 2)
+```
+       
+This data was not used to train the model and was not (e.g. wasn't used in the CV procedure to estimate the test error).  We can get a more accurate measure of true test error by evaluating the model fit on this held out set of data.  Using the same linear regression model from part 4 (fit to all of the training data), calculate the "true" test error of your predictions based on the newly collected measurements in `algaeTest.txt`.  Is this roughly what you expected based on the CV estimated test error from part 4? 
+       
+This is roughly what we expected from the earlier model in part 4.
+
+**_Cross Validation (CV) for Model Selection_**
+
+In this problem, we will be exploring a dataset of wages from a group of 3000 workers.  The goal in this part is to identify a relationship between wages and age.  
+
+6.  First, install the `ISLR` package, which includes many of the datasets used in the ISLR textbook. Look at the variables defined in the `Wage` dataset.  We will be using the `wage` and `age` variables for this problem. 
+
+   #.  Plot wages as a function of age using `ggplot`.  Your plot should include the datapoints (`geom_point()`) as well as a smooth fit to the data (`geom_smooth()`).  Based on your visualization, what is the general pattern of wages as a function of age? Does this match what you expect?
+
+
+```{r islr_install, indent=indent1, message=F, eval=FALSE, warning=FALSE}
+
+
+
+library(ISLR)
+head(Wage)
+
+ggplot(Wage, aes(x=age, y=wage)) + geom_point() + geom_smooth()
+
+
+```
+
+The general pattern of wages as a function of age is that wages increase with time to a certain point and then decreases again. This matches our expectations as people generally start out at minimum wage jobs and work their way up and eventually like to slow things down before retirement. 
+
+    #.  In this part of the problem, we will find a polynomial function of age that best fits the wage data.  For each polynomial function between $p=0, 1, 2, ... 10$:
+
+        #.  Fit a linear regression to predict wages as a function of $age$, $age^2$, ... $age^p$ (you should include an intercept as well).  Note that $p=0$ model is an "intercept-only" model.
+```{r}
+#for (i in 11){
+  #lapply(1:5, do.chunk, chunkdef = wage.chunk, dat = Wage)
+ # i= i+1
+#} 
+
+wage.chunk <- cut((1:nrow(Wage)), breaks = 5, labels = FALSE) %>%
+  sample
+set.seed(69)
+wage.chunk
+
+do.chunk.6 <- function(chunkid, chunkdef, dat, deg) { # function argument
+train = (chunkdef != chunkid)
+Xtr = dat[train,2] # get training set
+Ytr = dat[train,11] # get true response values in training set
+Xvl = dat[!train,2] # get validation set
+Yvl = dat[!train,11] # get true response values in validation set
+
+lm.wage <-  lm(Ytr ~ poly(Xtr, degree = deg, raw = FALSE), data = dat[train,])
+predYtr = predict(lm.wage) # predict training values
+predYvl = predict(lm.wage, poly(Xvl, degree = p))# predict validation values
+
+data.frame(fold = chunkid, 
+           train.error = mean(unlist(((predYtr - Ytr)^2))), # compute and store training error
+           val.error = mean(unlist((predYvl - Yvl)^2))) # compute and store test error
+}
+
+
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=1)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=2)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=3)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=4)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=5)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=6)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=7)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=8)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=9)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=10)
+lapply(1:5, do.chunk.6, chunkdef = wage.chunk, dat = Wage, deg=11)
+       
+```
+  
+
+        
+        #.  Use 5-fold cross validation to estimate the test error for this model. Save both the test error and the training error.
+```{r}
+degree.V <- (1:11)
+train.V1 <- c(1651.795, 1645.023, 1610.321,1705.606, 1754.005 )
+val.V1 <- c(1925.733,1915.251, 2094.013,1675.365 , 1439.451	)
+
+train.V2 <- c(1578.607,1568.65,1530.512,1627.572,1680.348	)
+val.V2 <- c(2013.069,1974.602, 2177.59, 1763.42,1501.068	)
+
+train.v3 <- c(1572.318	,1564.615, 1525.712,1622.111, 1674.585 )
+val.v3 <- c(2018.368 , 1975.131, 2181.682, 1770.063, 1507.751		)
+
+train.v4 <- c(1570.669	,1562.11	,1522.276,1621.326 	,1672.423)
+val.v4 <- c(2017.611	,1974.657, 2181.945, 1771.595, 1508.468	)
+
+train.v5 <- c(1570.015, 1562.081, 1521.413,1620.634, 1672.146 )
+val.v5 <- c(2016.462, 1974.791, 2182.645, 1777.416, 1509.099		)
+
+train.v6 <- c(1569.436,1560.745, 1519.143,	1619.619, 1670.597		)
+val.v6 <- c(2017.194,1977.606, 2183.236,1775.08, 1510.605	 )
+
+train.v7 <- c(1568.901)
+val.v7 <- c(2018.05)
+```
+    
+    #. Plot both the test error and training error (on the same plot) for each of the models estimated above as a function of $p$.  What do you observe about the training error as $p$ increases? What about the test error? Based on your results, which model should you select and why?
+    As p increases the training error decreases and the validation error increases; so we would probably select the training error model to minimize error.
+    
+   Note: `poly(age, degree=p, raw=TRUE)` will return a matrix with $p$ columns, where the $p$-th column is $age^p$.  For the predictors in your regression use `poly(age, degree=p, raw=FALSE)`.  The `raw=FALSE` option returns predictors which are numerically more stable (it returns a matrix of "orthogonal polynomials").  Numerical stability can be an issue because $age^p$ can be very very large if $p$ is large.  The orthogonal polynomials returned when `raw=FALSE` are rescaled to account for this so please use the `raw=FALSE` option.   
+   Hint: A function similar to `do.chunk` from problem 4 will be helpful here as well.
+
+<!-- ```{r, indent=indent1, eval=FALSE} -->
+<!-- trainErr <- numeric(11) -->
+<!-- testErr <- numeric(11) -->
+<!-- for(p in 0:10) { -->
+
+<!--   if(p == 0) { -->
+<!--     ## Fit an intercept only model to the data.  poly(age, degree=0) will cause an error -->
+<!--   } else { -->
+<!--     ## Fit a polynomial regression or order p.  Use poly(age, degree=p)     -->
+<!--   } -->
+
+<!--   trainErr[p+1] <- ## fill this in  -->
+<!--   testErr[p+1] <- ## fill this in -->
+<!-- } -->
+
+<!-- ## plot training error and test error -->
+
+<!-- ```    -->
+
+
+
+---------------
+
+7. __(231 Only)__ **The bias-variance tradeoff**.  Prove that the mean squared error can be decomposed into the variance plus bias squared.  That is, who $E[(\hat \theta - \theta)^2] = \text{Var}(\hat \theta)  + \text{Bias}(\hat \theta )^2$ where $\text{Bias}(\hat \theta) = E[\hat \theta - \theta]$.  Here $\hat \theta$ is an estimator (a random variable) of the fixed unknown constant $\theta$.  Hint: reogranize terms in the MSE by adding and subtracting $E[\hat \theta]$. 
+
+8. __(231 Only)__ As we discussed in class, distance metrics satisfy the following properties: 
+
+- _Positivity_:
+
+    * $d(x,y)\geq 0$
+    * $d(x,y) = 0$ only if $x=y$
+
+- _Symmetry_:
+    * $d(x,y) = d(y,x)$ for all $x$ and $y$
+
+- _Triangle Inequality_:
+    * $d(x,z) \leq d(x,y) + d(y,z)$ for  $x,\ y,\text{ and } z$
+
+    Show that the following measures are distance metrics by showing the above properties hold:
+
+    #. $d(x,y) = \|x-y\|_2$
+
+
+    #. $d(x,y) = \|x-y\|_\infty$
+    
+
